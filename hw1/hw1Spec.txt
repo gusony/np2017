@@ -39,7 +39,7 @@ About a numbered-pipe
 
 2.	If there is any error in a input line, the line number still counts.
 
-e.g. 	% ls |1
+e.g. 	% ls |2
 	% ctt               <= unknown command, process number is counted
 	Unknown command: [ctt].
 	% number

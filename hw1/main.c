@@ -18,7 +18,8 @@
 
 
 typedef struct command{
-    char   com_str_a[256];
+    char   com_str[256];
+    char   para[256];
     char   output_str[10000];
     int    output_to;
     int    output_to_bytes;
@@ -30,6 +31,7 @@ char welcome_message[] = {"****************************************\n** Welcome 
 int sockfd, newsockfd, clilen, clientchildpid,cmdchildpid, total_com_num;
 struct sockaddr_in cli_addr, serv_addr;
 command_t cmds[256];
+
 /*
 //void ident_comm(void);//check the string if the string are correct command
 //void cut_pip(char inputbuf[10000],command_t *head);//cut the string reading from client into command by '|'
@@ -39,9 +41,7 @@ command_t cmds[256];
 */
 
 void cut_pip(char inputbuf[10000]){
-    //command_t *point = head;
-    
-    int  i=0,j;
+    int  i=0,j,space_index;
     char temp[100];
     char *test = strtok(inputbuf, "|");
     memset(cmds, 0, sizeof(cmds));
@@ -49,39 +49,53 @@ void cut_pip(char inputbuf[10000]){
     
     /*cut string by '|'*/
     while (test != NULL){
-        strncpy(cmds[total_com_num++].com_str_a, test, strlen(test));
+        strncpy(cmds[total_com_num++].com_str, test, strlen(test));
         test = strtok(NULL, "|");
     }
     
     
     /* what number after '|'*/
     i=0;
-    while(cmds[i++].com_str_a[0]!='\0'){
+    while(cmds[i++].com_str[0]!='\0'){
         cmds[i-1].output_to_bytes = 0;
         
-        while(47 < cmds[i].com_str_a[cmds[i-1].output_to_bytes] && cmds[i].com_str_a[cmds[i-1].output_to_bytes] < 58)
+        while(47 < cmds[i].com_str[cmds[i-1].output_to_bytes] && cmds[i].com_str[cmds[i-1].output_to_bytes] < 58)
             cmds[i-1].output_to_bytes++;
         
         if(cmds[i-1].output_to_bytes >0){
-            strncpy(temp, cmds[i].com_str_a, cmds[i-1].output_to_bytes);
+            strncpy(temp, cmds[i].com_str, cmds[i-1].output_to_bytes);
             cmds[i-1].output_to = atoi(temp);
         }
     }
     
     /* clear the number from command */
     i=0;
-    while(cmds[i++].com_str_a[0]!='\0'){
-        for(j=0; cmds[i].com_str_a[cmds[i].output_to_bytes+1+j]!='\0' ; j++)
-            cmds[i].com_str_a[j] = cmds[i].com_str_a[cmds[i].output_to_bytes+1+j];
+    while(cmds[i++].com_str[0]!='\0'){
+        for(j=0; cmds[i].com_str[cmds[i].output_to_bytes+1+j]!='\0' ; j++)
+            cmds[i].com_str[j] = cmds[i].com_str[cmds[i].output_to_bytes+1+j];
         
-        cmds[i].com_str_a[j-1]='\0';
+        cmds[i].com_str[j-1]='\0';
     }
+    
+    /* cut command and para */
+    i=0;
+    while(cmds[i].com_str[0]!='\0'){
+        space_index = 0;
+        while(cmds[i].com_str[++space_index] != ' ' && space_index<strlen(cmds[i].com_str));//find the space in com_str
+        for(j=0; j+space_index<strlen(cmds[i].com_str); j++)
+            cmds[i].para[j]=cmds[i].com_str[space_index+1+j];
+        cmds[i].com_str[space_index]='\0';
+        i++;
+    }
+    
+    
     /*
     i=0;
-    while(cmds[i].com_str_a[0]!='\0'){
+    while(cmds[i].com_str[0]!='\0'){
         printf("i=%d\t",i);
-        printf("com_str_a=%s\t",cmds[i].com_str_a);
-        printf("output_to=%d\n",cmds[i].output_to);
+        printf("com_str=%s\t",cmds[i].com_str);
+        printf("output_to=%d\t",cmds[i].output_to);
+        printf("para=%s\n",cmds[i].para);
         i++;
     }*/
 }
@@ -156,13 +170,12 @@ void fork_cmds(void){
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
         for(i=0; i < cmd_index; i++){
             if(cmd_index == i+cmds[i].output_to){
-                strcat(cmds[cmd_index].com_str_a, " ");
-                strcat(cmds[cmd_index].com_str_a, cmds[i].output_str);
+                strcat(cmds[cmd_index].com_str, " ");
+                strcat(cmds[cmd_index].com_str, cmds[i].output_str);
             }
         }
         
         /* fork */
-        cmdchildpid
         cmdchildpid=fork();
         if(cmdchildpid<0)  perror("fork error");
         else if(cmdchildpid==0){
@@ -173,14 +186,6 @@ void fork_cmds(void){
             
             
     }
-    
-    i=0;
-    while(cmds[i].com_str_a[0]!='\0'){
-        printf("i=%d\tcom_str_a = %s\toutput_to = %d\n",i,cmds[i].com_str_a,cmds[i].output_to);
-        i++;
-    }
-    
-    
     
     /* pip output to parent process */
     /* close fork */
@@ -195,8 +200,8 @@ int main(int argc,char *argv[]){
     //read_dir("./bin/");//print dir file list 
     /* prepare environment */
 
-    char *origin_PATH = getenv("PATH");
-    char *set_PATH = "./bin";
+    //char *origin_PATH = getenv("PATH");
+    char *set_PATH = "./bin:./";
     setenv("PATH", set_PATH, 1);
     
     

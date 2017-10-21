@@ -9,36 +9,40 @@
 #include <errno.h>
 #include <dirent.h>
 
-
-//#include <ws2tcpip.h>
-//#include "winsock2.h"
-
-#define MAXLINE 512
+#define MAXLINE               512
 #define SERV_TCP_PORT 7575
+#define COMMAND_NUM  256
+#define MESSAGE_LEN     10000
+
+
 typedef struct command{
     char   com_str_a[256];
+    char   output_str[10000];
     int    output_to;
     int    output_to_bytes;
     int    total_com_num;
     struct command *next;
 }command_t;
 
-void ident_comm(void);//check the string if the string are correct command
-void cut_pip(char inputbuf[10000],command_t *head);//cut the string reading from client into command by '|'
-void read_dir(char *path);//read the dir/file list
-int  readline(int fd, char *ptr, int maxlen);//convert char array to string from client
-void str_echo(int sockfd);
-void create_socket(void);
+typedef struct test{
+    char   com_str_a[256];
+    char   *output_str;
+    int    output_to;
+    int    output_to_bytes;
+    int    total_com_num;
+}test_t;
 
 
+/*
+//void ident_comm(void);//check the string if the string are correct command
+//void cut_pip(char inputbuf[10000],command_t *head);//cut the string reading from client into command by '|'
+//void read_dir(char *path);//read the dir/file list
+//int  readline(int fd, char *ptr, int maxlen);//convert char array to string from client
+//void str_echo(int sockfd);
+//void create_socket(void);
+*/
 
 void cut_pip(char inputbuf[10000],command_t *head){
-    
-    //char [100][100];
-    //int  com_num=0;
-    //int  output_to[100][2];
-    
-    
     command_t *point = head;
     
     int  i,j;
@@ -56,7 +60,6 @@ void cut_pip(char inputbuf[10000],command_t *head){
             test = strtok(NULL, "|");
         }
     }
-    
     
     /* what number after '|'*/
     point=head;
@@ -130,22 +133,10 @@ void str_echo(int sockfd){
     }
 }
 
-int main(int argc,char *argv[]){
-    int sockfd, newsockfd, clilen, childpid;
+void start_server(int argc,char *argv[], int *sockfd, int *newsockfd,command_t *head,char inputBuffer[10000]){
+    char welcome_message[] = {"****************************************\n** Welcome to the information server. **\n****************************************\n"};
+    int  clilen, childpid;
     struct sockaddr_in cli_addr, serv_addr;
-    char message[] = {"****************************************\n** Welcome to the information server. **\n****************************************\n"};
-    //char inputBuffer[10000] = "autoremovetag test.html | number |1 list |23 number |456 balabala";
-    char inputBuffer[10000] = "autoremovetag test.html | number |1 list |23 number |456 balabala";
-    //memset(&inputBuffer,0,sizeof(inputBuffer));
-    
-    //read_dir("./bin/");//print dir file list 
-    //create_socket();
-    
-    command_t *head = malloc(sizeof(command_t)) ,*point;
-    head->next = NULL;
-    
-    
-    
     /* 1.Socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0))<0){
         printf("server : can't open stream socket\n");
@@ -181,7 +172,7 @@ int main(int argc,char *argv[]){
             printf("server : accept error");
         else{
             printf("newsockfd:%d\n",newsockfd);
-            send(newsockfd,message,sizeof(message),0);
+            send(newsockfd,welcome_message,sizeof(welcome_message),0);
             while(1){
                 readline(newsockfd, inputBuffer, sizeof(inputBuffer));
                 //read(newsockfd, inputBuffer, sizeof(inputBuffer));
@@ -192,16 +183,48 @@ int main(int argc,char *argv[]){
             }
         }
     }
-        /*
-        if(childpid = fork()<0)
-            printf("server : fork error");
-        
-        else if(childpid == 0){
-            close(sockfd);
-            str_echo(newsockfd);
-            exit(0);
-        }
-        close(newsockfd);
-        */
+}
+
+int main(int argc,char *argv[]){
     
+    
+    int sockfd, newsockfd, clilen, childpid;
+    char inputBuffer[10000] = "autoremovetag test.html | number |1 list |23 number |456 balabala";
+    //memset(&inputBuffer,0,sizeof(inputBuffer));
+    
+    //read_dir("./bin/");//print dir file list 
+    /* prepare environment */
+    char *origin_PATH = getenv("PATH");
+    char *set_PATH = "./bin";
+    
+    setenv("PATH", set_PATH, 1);
+    
+    
+    /*
+	childpid=fork();
+    if(childpid<0)
+        perror("fork error");
+    
+    else if (childpid == 0){ //child process
+        char * execvp_str[] = {"echo", "executed by execvp",">>", "~/abc.txt",NULL};  
+        if (execvp("echo",execvp_str) <0 ){  
+            perror("error on exec");  
+            exit(0);  
+        }
+    }else{ //parent process
+        wait(&childpid);
+        printf("execvp done\n\n");
+    }
+    */
+   
+    return(0);
+    
+    command_t *head = malloc(sizeof(command_t)) ,*point;
+    head->next = NULL;
+    
+    //start_server(argc,argv,&sockfd, &newsockfd,head,&inputBuffer);
+    
+    
+    
+
 }

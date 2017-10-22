@@ -99,7 +99,7 @@ void cut_pip(char inputbuf[10000]){
             cmds[i].com_str[0][j]='\0';
     }
     
-    ptfallcmd();
+    
     /* split command and para */
     i=0;
     while(cmds[i].com_str[0][0]!='\0'){
@@ -118,6 +118,7 @@ void cut_pip(char inputbuf[10000]){
         cmds[i].com_str[0][space_index]='\0';
         i++;
     }
+    ptfallcmd();
     
 }
 
@@ -233,13 +234,7 @@ void exe_cmds(int cmd_index){
     else if(strcmp(cmds[cmd_index].com_str[0],"number")==0){}
     else if(strcmp(cmds[cmd_index].com_str[0],"noop")==0){}
     else if(strcmp(cmds[cmd_index].com_str[0],"date")==0){}
-    else if(strcmp(cmds[cmd_index].com_str[0],"printenv")==0){
-        printf("PATH=%s\n",getenv("PATH"));
-    }
-    else if(strcmp(cmds[cmd_index].com_str[0],"setenv")==0){
-        setenv(cmds[cmd_index].com_str[1],cmds[cmd_index].com_str[2], 1);
-        //printf("PATH=%s\n",getenv(cmds[cmd_index].com_str[1]));
-    }
+    
     else{
         printf("Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
     }
@@ -264,38 +259,53 @@ void fork_cmds(void){
             }
         }*/
         
-        /* create pipeline */
-        if (pipe(pipe_fd) == -1){/* 建立 pipe */
-            fprintf(stderr, "Error: Unable to create pipe.\n");
-            exit(EXIT_FAILURE);
-        }
         
-        /* fork */
-        cmdchildpid=fork();
         
-        if(cmdchildpid<0)  
-            perror("fork error");
-        else if(cmdchildpid==0){
-            
-            close(pipe_fd[0]);//close read
-            //if(cmds[cmd_index].output_to>0)
-                dup2(pipe_fd[1], STDOUT_FILENO);//redirect
-            close(pipe_fd[1]);//close write
-                
-            /* exe command */
-            exe_cmds(cmd_index);
-            
-            exit(1);
-        }
-        else{//parent process
-            close(pipe_fd[1]);//close write
-            read(pipe_fd[0],&cmds[cmd_index].output_str,sizeof(cmds[cmd_index].output_str));
-            printf("1.%s,\n",cmds[cmd_index].output_str);
+        if(strstr(cmds[cmd_index].com_str[0],"exit")!=NULL) break;
+        else if(strcmp(cmds[cmd_index].com_str[0], "printenv")==0){
+            strcpy(cmds[cmd_index].output_str,"PATH=");
+            strcat(cmds[cmd_index].output_str,getenv("PATH"));
+            strcat(cmds[cmd_index].output_str,"\n");
             if(cmds[cmd_index].output_to==0)
                 strcat(outputBuffer,cmds[cmd_index].output_str);
-            wait(&cmdchildpid);
-            close(pipe_fd[0]);
         }
+        else if(strcmp(cmds[0].com_str[0],"setenv")==0){
+            setenv(cmds[cmd_index].com_str[1], cmds[cmd_index].com_str[2], 1);            
+        }
+        else{
+            /* create pipeline */
+            if (pipe(pipe_fd) == -1){/* 建立 pipe */
+                fprintf(stderr, "Error: Unable to create pipe.\n");
+                exit(EXIT_FAILURE);
+            }
+            
+            /* fork */
+            cmdchildpid=fork();
+            
+            if(cmdchildpid<0)  
+                perror("fork error");
+            else if(cmdchildpid==0){
+                
+                close(pipe_fd[0]);//close read
+                dup2(pipe_fd[1], STDOUT_FILENO);//redirect
+                close(pipe_fd[1]);//close write
+                    
+                /* exe command */
+                exe_cmds(cmd_index);
+                
+                exit(1);
+            }
+            else{//parent process
+                close(pipe_fd[1]);//close write
+                read(pipe_fd[0],&cmds[cmd_index].output_str,sizeof(cmds[cmd_index].output_str));
+                
+                if(cmds[cmd_index].output_to==0)
+                    strcat(outputBuffer,cmds[cmd_index].output_str);
+                wait(&cmdchildpid);
+                close(pipe_fd[0]);
+            }
+        }
+        
     }
 }
 
@@ -329,14 +339,17 @@ int main(int argc,char *argv[]){
     while(1){
         strcpy(outputBuffer,"\0");//clear buffer
         memset(cmds,0,sizeof(cmds));
+        memset(outputBuffer,'\0',sizeof(outputBuffer));
         send(newsockfd,"% ",sizeof("% "),0);
         //write(newsockfd,"% ",sizeof("% "));
         readline(newsockfd, inputBuffer, sizeof(inputBuffer));
         printf("Get:%s\n",inputBuffer);
         cut_pip(inputBuffer);
         
-        if(strstr(cmds[0].com_str[0],"exit")!=NULL) break;
+        
+        
         fork_cmds();
+        
         send(newsockfd,outputBuffer,sizeof(outputBuffer),0);
         //write(newsockfd,outputBuffer,sizeof(outputBuffer));
     }

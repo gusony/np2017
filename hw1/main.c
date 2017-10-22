@@ -18,8 +18,10 @@
 
 
 typedef struct command{
-    char   com_str[256];
-    char   para[256];
+    char   com_str[256][256];
+    int    para_len;
+    //char   para[256][256];
+    
     char   output_str[10000];
     int    output_to;
     int    output_to_bytes;
@@ -31,6 +33,7 @@ char welcome_message[] = {"****************************************\n** Welcome 
 int sockfd, newsockfd, clilen, clientchildpid,cmdchildpid, total_com_num;
 struct sockaddr_in cli_addr, serv_addr;
 command_t cmds[256];
+int pipe_fd[2];
 
 /*
 //void ident_comm(void);//check the string if the string are correct command
@@ -40,8 +43,22 @@ command_t cmds[256];
 //void create_socket(void);
 */
 
+void ptfallcmd(void){
+    int i=0,j;
+    printf("------------------------------\n");
+    while(cmds[i].com_str[0][0]!='\0'){
+        printf("i=%d,",i);
+        printf("output_to=%d,",cmds[i].output_to);
+        printf("com_str=");
+        for(j=0; j<5; j++) //cmds[i].para_len
+            printf("%s,",cmds[i].com_str[j]);
+        printf("\n");
+        i++;
+    }
+}
+    
 void cut_pip(char inputbuf[10000]){
-    int  i=0,j,space_index;
+    int  i=0,j,k,space_index;
     char temp[100];
     char *test = strtok(inputbuf, "|");
     memset(cmds, 0, sizeof(cmds));
@@ -49,55 +66,76 @@ void cut_pip(char inputbuf[10000]){
     
     /*cut string by '|'*/
     while (test != NULL){
-        strncpy(cmds[total_com_num++].com_str, test, strlen(test));
+        strncpy(cmds[total_com_num++].com_str[0], test, strlen(test));
         test = strtok(NULL, "|");
     }
     
-    
     /* what number after '|'*/
     i=0;
-    while(cmds[i++].com_str[0]!='\0'){
-        cmds[i-1].output_to_bytes = 0;
+    while(cmds[i++].com_str[0][0]!='\0'){
+        cmds[i].output_to_bytes = 0;
         
-        while(47 < cmds[i].com_str[cmds[i-1].output_to_bytes] && cmds[i].com_str[cmds[i-1].output_to_bytes] < 58)
-            cmds[i-1].output_to_bytes++;
+        while(47 < cmds[i].com_str[0][cmds[i].output_to_bytes] && cmds[i].com_str[0][cmds[i].output_to_bytes] < 58)
+            cmds[i].output_to_bytes++;
         
-        if(cmds[i-1].output_to_bytes >0){
-            strncpy(temp, cmds[i].com_str, cmds[i-1].output_to_bytes);
+        if(cmds[i].output_to_bytes >0){
+            strncpy(temp, cmds[i].com_str[0], cmds[i].output_to_bytes);
             cmds[i-1].output_to = atoi(temp);
         }
     }
     
+    
     /* clear the number from command */
     i=0;
-    while(cmds[i++].com_str[0]!='\0'){
-        for(j=0; cmds[i].com_str[cmds[i].output_to_bytes+1+j]!='\0' ; j++)
-            cmds[i].com_str[j] = cmds[i].com_str[cmds[i].output_to_bytes+1+j];
+    while(cmds[i++].com_str[0][0]!='\0'){
+        for(j=0; cmds[i].com_str[0][cmds[i].output_to_bytes+1+j]!='\0' ; j++)
+            cmds[i].com_str[0][j] = cmds[i].com_str[0][cmds[i].output_to_bytes+1+j];
         
-        cmds[i].com_str[j-1]='\0';
+        if(cmds[i].com_str[0][j-1]==' ')
+            cmds[i].com_str[0][j-1]='\0';
+        else
+            cmds[i].com_str[0][j]='\0';
     }
     
-    /* cut command and para */
+    
+    /* split command and para */
     i=0;
-    while(cmds[i].com_str[0]!='\0'){
+    while(cmds[i].com_str[0][0]!='\0'){
+        j=0;k=0;
         space_index = 0;
-        while(cmds[i].com_str[++space_index] != ' ' && space_index<strlen(cmds[i].com_str));//find the space in com_str
-        for(j=0; j+space_index<strlen(cmds[i].com_str); j++)
-            cmds[i].para[j]=cmds[i].com_str[space_index+1+j];
-        cmds[i].com_str[space_index]='\0';
+        
+        
+        while(cmds[i].com_str[0][++space_index] != ' ' && space_index<strlen(cmds[i].com_str[0]));//find the first ' '
+        if(cmds[i].com_str[0][space_index+1] != '\0')
+            for(j=space_index;j<strlen(cmds[i].com_str[0]);j++)
+                if(cmds[i].com_str[0][j] == ' '){
+                    cmds[i].para_len++;
+                    k=0;
+                }
+                else
+                    cmds[i].com_str[cmds[i].para_len][k++]=cmds[i].com_str[0][j];
+
+        cmds[i].com_str[0][space_index]='\0';
         i++;
     }
-    
-    
-    /*
-    i=0;
-    while(cmds[i].com_str[0]!='\0'){
-        printf("i=%d\t",i);
-        printf("com_str=%s\t",cmds[i].com_str);
-        printf("output_to=%d\t",cmds[i].output_to);
-        printf("para=%s\n",cmds[i].para);
+            
+            /*cmds[i].com_str[i][++space_index]!=' ' && space_index<strlen(cmds[i].com_str[0])){
+            while()*/
+        
+        
+        /*j=0;
+        space_index = 0;
+        for(k=0; k<strlen(cmds[i].com_str[0]); k++){
+            while(cmds[i].com_str[0][++space_index] != ' ' && space_index<strlen(cmds[i].com_str[0]));//find the space in com_str
+            for(j=0; j+space_index<strlen(cmds[i].com_str[0]); j++)
+                cmds[i].para[j]=cmds[i].com_str[space_index+1+j];
+            cmds[i].com_str[space_index]='\0';
+        }
         i++;
     }*/
+    ptfallcmd();
+        
+    
 }
 
 void read_dir(char *path){
@@ -160,31 +198,103 @@ void start_server(int argc,char *argv[]){
     listen(sockfd, 5);
 }
 
-void exe_cmds(int cmd_index){
+void  parse(int cmd_index, char **argv){
+    char temp[256]="";
+    char *line;
+    /*strcat(temp,cmds[cmd_index].com_str);
+    if(cmds[cmd_index].para[0] != '\0'){
+        strcat(temp," ");
+        strcat(temp,cmds[cmd_index].para);
+    }*/
+    line = &temp[0];
     
+    while (*line != '\0') {       /* if not the end of line ....... */ 
+        while (*line == ' ' || *line == '\t' || *line == '\n')
+            *line++ = '\0';     /* replace white spaces with 0    */
+        *argv++ = line;          /* save the argument position     */
+        while (*line != '\0' && *line != ' ' && 
+            *line != '\t' && *line != '\n') 
+        line++;             /* skip the argument until ...    */
+    }
+    *argv = '\0';                 /* mark the end of argument list  */
+}
+
+void exe_cmds(int cmd_index){
+    //char * execvp_str[64];
+    /*
+    parse(cmd_index,execvp_str);
+    printf("%s\n%s\n%s\n",execvp_str[0],execvp_str[1],execvp_str[2]);
+    if(cmds[cmd_index].output_to>0)
+        dup2(pipe_fd[1], STDOUT_FILENO);//output redirect
+    */
+    char * execvp_str[]={"ls","./bin",NULL};
+    /* all commands */    
+    if(strcmp(cmds[cmd_index].com_str[0],"ls")==0){
+        if (execvp("ls",execvp_str) <0 ){
+            perror("error on exec");
+            exit(0);
+        }
+    }
+    else if(strcmp(cmds[cmd_index].com_str[0],"cat")==0){
+        if (execvp("cat",execvp_str) <0 ){
+            perror("error on exec");
+            exit(0);
+        }
+    }
+    else if(strcmp(cmds[cmd_index].com_str[0],"removetag")==0){}
+    else if(strcmp(cmds[cmd_index].com_str[0],"removetag0")==0){}
+    else if(strcmp(cmds[cmd_index].com_str[0],"number")==0){}
+    else if(strcmp(cmds[cmd_index].com_str[0],"noop")==0){}
+    else if(strcmp(cmds[cmd_index].com_str[0],"printenv")==0){
+        printf("PATH=%s\n",getenv("PATH"));
+    }
+    else if(strcmp(cmds[cmd_index].com_str[0],"setenv")==0){
+        setenv("PATH", cmds[cmd_index].com_str[1], 1);
+        printf("PATH=%s\n",getenv("PATH"));
+    }
+    else{
+        printf("Unknown command: [%s].\n",cmds[cmd_index].com_str);
+    }
+        
 }
 void fork_cmds(void){
     int i,cmd_index;
     
-    /*check previout command has output to this command*/
+    /* check each commands */
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
-        for(i=0; i < cmd_index; i++){
+        /*check previout command has output to this command*/    
+        /*for(i=0; i < cmd_index; i++){ 
             if(cmd_index == i+cmds[i].output_to){
-                strcat(cmds[cmd_index].com_str, " ");
-                strcat(cmds[cmd_index].com_str, cmds[i].output_str);
+                strcat(cmds[cmd_index].para, " ");
+                strcat(cmds[cmd_index].para, cmds[i].output_str);
             }
+        }*/
+        
+        /* create pipeline */
+        if (pipe(pipe_fd) == -1){/* 建立 pipe */
+            fprintf(stderr, "Error: Unable to create pipe.\n");
+            exit(EXIT_FAILURE);
         }
         
         /* fork */
         cmdchildpid=fork();
-        if(cmdchildpid<0)  perror("fork error");
+        if(cmdchildpid<0)  
+            perror("fork error");
         else if(cmdchildpid==0){
+            close(pipe_fd[0]);//close read
             /* exe command */
             exe_cmds(cmd_index);
+            //write(pipe_fd[1],"execvp(\"ls\") finish",sizeof("execvp(\"ls\") finish"));
+            close(pipe_fd[1]);
             exit(1);
         }
-            
-            
+        else{
+            close(pipe_fd[1]);//close write
+            read(pipe_fd[0],&cmds[cmd_index].output_str,sizeof(cmds[cmd_index].output_str));
+            wait(&cmdchildpid);
+            close(pipe_fd[0]);
+        }
+        
     }
     
     /* pip output to parent process */
@@ -223,8 +333,8 @@ int main(int argc,char *argv[]){
     printf("newsockfd:%d\n",newsockfd);
     send(newsockfd,welcome_message,sizeof(welcome_message),0);
     while(1){
+        send(newsockfd,"% ",sizeof("% "),0);
         readline(newsockfd, inputBuffer, sizeof(inputBuffer));
-        
         printf("Get:%s\n",inputBuffer);
         cut_pip(inputBuffer);
         fork_cmds();

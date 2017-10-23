@@ -20,17 +20,16 @@
 typedef struct command{
     char   com_str[256][256];
     int    para_len;
-    //char   para[256][256];
-    
     char   output_str[10000];
     int    output_to;
     int    output_to_bytes;
 }command_t;
 
-
+char dir_list[100][100];
+int  dir_num = 0;
 char inputBuffer[10000];
 char outputBuffer[10000];
-char welcome_message[] = {"****************************************\n** Welcome to the information server. **\n****************************************\n"};
+char welcome_message[1000];
 int sockfd, newsockfd, clilen, clientchildpid,cmdchildpid, total_com_num;
 struct sockaddr_in cli_addr, serv_addr;
 command_t cmds[256];
@@ -44,6 +43,30 @@ int pipe_fd[2];
 //void create_socket(void);
 */
 
+void wel_mes(void){
+    strcpy(welcome_message,"****************************************\n");
+    strcat(welcome_message,"** Welcome to the information server. **");
+    strcpy(welcome_message,"****************************************\n");
+    strcat(welcome_message,"** You are in the directory,/home/0646001/ras/.\n");
+    strcat(welcome_message,"** This directory will be under \"/\", in this system.\n");
+    strcat(welcome_message,"** This directory includes the following executable programs.\n");
+    strcat(welcome_message,"** \n");
+    strcat(welcome_message,"** bin/\n");
+    strcat(welcome_message,"** test.html\n");
+    strcat(welcome_message,"** \n");
+    strcat(welcome_message,"** The directory bin/ includes: \n");
+    strcat(welcome_message,"** cat\n");
+    strcat(welcome_message,"** ls\n");
+    strcat(welcome_message,"** removetag\n");
+    strcat(welcome_message,"** removetag0\n");
+    strcat(welcome_message,"** number \n");
+    strcat(welcome_message,"** \n");
+    strcat(welcome_message,"** In addition, the following two commands are supported by ras. \n");
+    strcat(welcome_message,"** setenv\n");
+    strcat(welcome_message,"** printenv\n");
+    strcat(welcome_message,"** \n");
+}
+    
 void ptfallcmd(void){
     int i=0,j;
     printf("------------------------------\n");
@@ -51,7 +74,7 @@ void ptfallcmd(void){
         printf("i=%d,",i);
         printf("output_to=%d,",cmds[i].output_to);
         printf("com_str=");
-        for(j=0; j<5; j++) //cmds[i].para_len
+        for(j=0; j<=cmds[i].para_len; j++) //cmds[i].para_len
             printf("%s,",cmds[i].com_str[j]);
         printf("\n");
         i++;
@@ -125,13 +148,18 @@ void cut_pip(char inputbuf[10000]){
 void read_dir(char *path){
     DIR           *d;
     struct dirent *dir;
+    dir_num = 0;
+    
     if (d = opendir(path)){
-        while ((dir = readdir(d)) != NULL){
-            printf(".bin/%s\n", dir->d_name);
-        }
+        while ((dir = readdir(d)) != NULL)
+            strcpy(dir_list[dir_num++],dir->d_name); 
         closedir(d);
     }
-    printf("---------------\n");
+    
+    printf("in %s:\n",path);
+    for(int i=0; i<dir_num; i++)
+        printf("%s\n",dir_list[i]);
+        
 }
 
 int readline(int fd, char *ptr, int maxlen){
@@ -208,16 +236,27 @@ void exe_cmds(int cmd_index){
     char * execvp_str[ cmds[cmd_index].para_len +2 ];
     int i;
     
-    execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
-    //strcpy(execvp_str[0], cmds[cmd_index].com_str[0]);
+    for (i=0; i<dir_num; i++){//is a legal command
+        if(strcmp(cmds[cmd_index].com_str[0],dir_list[i])==0 ){
+            execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
+            for(i=1; i<=cmds[cmd_index].para_len; i++)
+                execvp_str[i] = &cmds[cmd_index].com_str[i][0];
+            execvp_str[i]=NULL;
+            
+            if (execvp(execvp_str[0],execvp_str) <0 ){
+                perror("error on exec");
+                exit(0);
+            }
+        }
+    }
+    if(i==dir_num){
+        printf("Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
+    }
     
-    for(i=1; i<=cmds[cmd_index].para_len; i++)
-        execvp_str[i] = &cmds[cmd_index].com_str[i][0];
-    execvp_str[i]=NULL;
     
     
     /* all commands */    
-    if(     strcmp(cmds[cmd_index].com_str[0],"ls")==0){
+    /*if(     strcmp(cmds[cmd_index].com_str[0],"ls")==0){
         if (execvp("ls",execvp_str) <0 ){
             perror("error on exec");
             exit(0);
@@ -233,11 +272,7 @@ void exe_cmds(int cmd_index){
     else if(strcmp(cmds[cmd_index].com_str[0],"removetag0")==0){}
     else if(strcmp(cmds[cmd_index].com_str[0],"number")==0){}
     else if(strcmp(cmds[cmd_index].com_str[0],"noop")==0){}
-    else if(strcmp(cmds[cmd_index].com_str[0],"date")==0){}
-    
-    else{
-        printf("Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
-    }
+    */
         
 }
 
@@ -263,14 +298,16 @@ void fork_cmds(void){
         
         if(strstr(cmds[cmd_index].com_str[0],"exit")!=NULL) break;
         else if(strcmp(cmds[cmd_index].com_str[0], "printenv")==0){
-            strcpy(cmds[cmd_index].output_str,"PATH=");
-            strcat(cmds[cmd_index].output_str,getenv("PATH"));
+            strcpy(cmds[cmd_index].output_str,cmds[cmd_index].com_str[1]);
+            strcat(cmds[cmd_index].output_str,"=");
+            strcat(cmds[cmd_index].output_str,getenv(cmds[cmd_index].com_str[1]));
             strcat(cmds[cmd_index].output_str,"\n");
             if(cmds[cmd_index].output_to==0)
                 strcat(outputBuffer,cmds[cmd_index].output_str);
         }
         else if(strcmp(cmds[0].com_str[0],"setenv")==0){
-            setenv(cmds[cmd_index].com_str[1], cmds[cmd_index].com_str[2], 1);            
+            setenv(cmds[cmd_index].com_str[1], cmds[cmd_index].com_str[2], 1);
+            read_dir(getenv("PATH"));
         }
         else{
             /* create pipeline */
@@ -305,7 +342,6 @@ void fork_cmds(void){
                 close(pipe_fd[0]);
             }
         }
-        
     }
 }
 
@@ -315,12 +351,12 @@ int main(int argc,char *argv[]){
     
     /* prepare environment */
     char *origin_PATH = getenv("PATH");
-    char *set_PATH = "./bin:./";
+    char *set_PATH = "./bin";
     setenv("PATH", set_PATH, 1);
-    
+    read_dir(getenv("PATH"));
     
     start_server(argc,argv);
-    
+    wel_mes();
     while(1){
         clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
@@ -357,6 +393,7 @@ int main(int argc,char *argv[]){
     exit(0);
     return(0);
 }
+
 /*//store garbage
     
             cmds[i].com_str[i][++space_index]!=' ' && space_index<strlen(cmds[i].com_str[0])){

@@ -24,49 +24,28 @@ typedef struct command{
     int    output_to;
     int    output_to_bytes;
 }command_t;
-
-char dir_list[100][100];
-int  dir_num = 0;
-char inputBuffer[10000];
-char outputBuffer[10000];
-char welcome_message[1000];
-int sockfd, newsockfd, clilen, clientchildpid,cmdchildpid, total_com_num;
-struct sockaddr_in cli_addr, serv_addr;
 command_t cmds[256];
-int pipe_fd[2];
 
-/*
-//void ident_comm(void);//check the string if the string are correct command
-//void cut_pip(char inputbuf[10000],command_t *head);//cut the string reading from client into command by '|'
-//void read_dir(char *path);//read the dir/file list
-//int  readline(int fd, char *ptr, int maxlen);//convert char array to string from client
-//void create_socket(void);
-*/
 
-void wel_mes(void){
-    strcpy(welcome_message,"****************************************\n");
-    strcat(welcome_message,"** Welcome to the information server. **");
-    strcpy(welcome_message,"****************************************\n");
-    strcat(welcome_message,"** You are in the directory,/home/0646001/ras/.\n");
-    strcat(welcome_message,"** This directory will be under \"/\", in this system.\n");
-    strcat(welcome_message,"** This directory includes the following executable programs.\n");
-    strcat(welcome_message,"** \n");
-    strcat(welcome_message,"** bin/\n");
-    strcat(welcome_message,"** test.html\n");
-    strcat(welcome_message,"** \n");
-    strcat(welcome_message,"** The directory bin/ includes: \n");
-    strcat(welcome_message,"** cat\n");
-    strcat(welcome_message,"** ls\n");
-    strcat(welcome_message,"** removetag\n");
-    strcat(welcome_message,"** removetag0\n");
-    strcat(welcome_message,"** number \n");
-    strcat(welcome_message,"** \n");
-    strcat(welcome_message,"** In addition, the following two commands are supported by ras. \n");
-    strcat(welcome_message,"** setenv\n");
-    strcat(welcome_message,"** printenv\n");
-    strcat(welcome_message,"** \n");
-}
-    
+int  dir_num = 0;
+int sockfd, newsockfd, clilen, clientchildpid,cmdchildpid, total_com_num, cmd_count;
+char dir_list[100][100];
+char inputBuffer[10000];
+char welcome_message[]="****************************************\n** Welcome to the information server. **\n****************************************\n";
+
+struct sockaddr_in cli_addr, serv_addr;
+int *pipe_fd[10];
+//int skt_fd[2];
+
+
+void ptfallcmd(void);
+void cut_pip(char inputbuf[10000]);
+void read_dir(char *path);
+int  readline(int fd, char *ptr, int maxlen);
+void start_server(int argc,char *argv[]);
+void exe_cmds(int cmd_index);
+void fork_cmds(void);
+
 void ptfallcmd(void){
     int i=0,j;
     printf("------------------------------\n");
@@ -96,9 +75,13 @@ void cut_pip(char inputbuf[10000]){
     
     /* what number after '|'*/
     i=0;
-    while(cmds[i++].com_str[0][0]!='\0'){
+    while(cmds[i].com_str[0][0]!='\0'){
         cmds[i].output_to_bytes = 0;
-        
+       
+        if( i>0 ){
+            cmds[i-1].output_to =1;
+        }
+
         while(47 < cmds[i].com_str[0][cmds[i].output_to_bytes] && cmds[i].com_str[0][cmds[i].output_to_bytes] < 58)
             cmds[i].output_to_bytes++;
         
@@ -106,8 +89,8 @@ void cut_pip(char inputbuf[10000]){
             strncpy(temp, cmds[i].com_str[0], cmds[i].output_to_bytes);
             cmds[i-1].output_to = atoi(temp);
         }
+        i++;
     }
-    
     
     /* clear the number from command */
     i=0;
@@ -141,8 +124,6 @@ void cut_pip(char inputbuf[10000]){
         cmds[i].com_str[0][space_index]='\0';
         i++;
     }
-    ptfallcmd();
-    
 }
 
 void read_dir(char *path){
@@ -150,7 +131,7 @@ void read_dir(char *path){
     struct dirent *dir;
     dir_num = 0;
     
-    if (d = opendir(path)){
+    if ((d = opendir(path))){
         while ((dir = readdir(d)) != NULL)
             strcpy(dir_list[dir_num++],dir->d_name); 
         closedir(d);
@@ -159,10 +140,9 @@ void read_dir(char *path){
     printf("in %s:\n",path);
     for(int i=0; i<dir_num; i++)
         printf("%s\n",dir_list[i]);
-        
 }
 
-int readline(int fd, char *ptr, int maxlen){
+int  readline(int fd, char *ptr, int maxlen){
     int n,rc;
     char c;
     for(n=1; n<maxlen;n++){
@@ -211,243 +191,131 @@ void start_server(int argc,char *argv[]){
     listen(sockfd, 5);
 }
 
-void  parse(int cmd_index, char **argv){
-    char temp[256]="";
-    char *line;
-    /*strcat(temp,cmds[cmd_index].com_str);
-    if(cmds[cmd_index].para[0] != '\0'){
-        strcat(temp," ");
-        strcat(temp,cmds[cmd_index].para);
-    }*/
-    line = &temp[0];
-    
-    while (*line != '\0') {       /* if not the end of line ....... */ 
-        while (*line == ' ' || *line == '\t' || *line == '\n')
-            *line++ = '\0';     /* replace white spaces with 0    */
-        *argv++ = line;          /* save the argument position     */
-        while (*line != '\0' && *line != ' ' && 
-            *line != '\t' && *line != '\n') 
-        line++;             /* skip the argument until ...    */
-    }
-    *argv = '\0';                 /* mark the end of argument list  */
-}
-
 void exe_cmds(int cmd_index){
     char * execvp_str[ cmds[cmd_index].para_len +2 ];
-    int i;
+    int i,j;
+    int f_d;//= (int *)NULL;
     
-    for (i=0; i<dir_num; i++){//is a legal command
-        if(strcmp(cmds[cmd_index].com_str[0],dir_list[i])==0 ){
-            execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
-            for(i=1; i<=cmds[cmd_index].para_len; i++)
-                execvp_str[i] = &cmds[cmd_index].com_str[i][0];
-            execvp_str[i]=NULL;
-            
-            if (execvp(execvp_str[0],execvp_str) <0 ){
-                perror("error on exec");
-                exit(0);
-            }
+    for(i=0; i < cmd_index; i++)//have data in pipe for this cmd
+        if(cmd_index+cmd_count == i+cmds[i].output_to)
+            dup2(pipe_fd[cmd_index+cmd_count][0], STDIN_FILENO);
+
+    execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
+    for(j=1; j<=cmds[cmd_index].para_len; j++){
+        execvp_str[j] = &cmds[cmd_index].com_str[j][0];
+        if(strcmp(cmds[cmd_index].com_str[j], ">") == 0){ // if find > 
+            FILE * f =fopen(cmds[cmd_index].com_str[j+1],"w");
+            f_d = fileno(f);
+            break;
         }
     }
-    if(i==dir_num){
-        printf("Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
-    }
+    execvp_str[j]=NULL;
+
+    /* set redirect */
+    if( cmds[cmd_index].output_to>0 )
+        dup2(pipe_fd[cmds[cmd_index].output_to][1], STDOUT_FILENO);
+    else if(f_d > 0)
+        dup2(f_d, STDOUT_FILENO);
+    else
+        dup2(newsockfd, STDOUT_FILENO);
+
     
-    
-    
-    /* all commands */    
-    /*if(     strcmp(cmds[cmd_index].com_str[0],"ls")==0){
-        if (execvp("ls",execvp_str) <0 ){
-            perror("error on exec");
-            exit(0);
-        }
+    if (execvp(execvp_str[0],execvp_str) <0 ){
+        perror("error on exec");
+        exit(0);
     }
-    else if(strcmp(cmds[cmd_index].com_str[0],"cat")==0){
-        if (execvp("cat",execvp_str) <0 ){
-            perror("error on exec");
-            exit(0);
-        }
-    }
-    else if(strcmp(cmds[cmd_index].com_str[0],"removetag")==0){}
-    else if(strcmp(cmds[cmd_index].com_str[0],"removetag0")==0){}
-    else if(strcmp(cmds[cmd_index].com_str[0],"number")==0){}
-    else if(strcmp(cmds[cmd_index].com_str[0],"noop")==0){}
-    */
-        
+    exit(0);
 }
 
 void fork_cmds(void){
     int i,cmd_index;
-    char temp[10000];
-    char *test;
+    
+    
     /* check each commands */
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
-        /*check previout command if  has output to this command*/    
-        /*for(i=0; i < cmd_index; i++){
-            if(cmd_index == i+cmds[i].output_to){
-                strcpy(temp,cmds[i].output_str);
-                test = strtok(temp, " ");
-                while(test!=NULL){
-                    strcpy(cmds[i].com_str[cmds[i].para_len++] ,test);
-                    test = strtok(NULL," ");
-                }
-            }
-        }*/
-        
-        
-        
-        if(strstr(cmds[cmd_index].com_str[0],"exit")!=NULL) break;
-        else if(strcmp(cmds[cmd_index].com_str[0], "printenv")==0){
-            strcpy(cmds[cmd_index].output_str,cmds[cmd_index].com_str[1]);
-            strcat(cmds[cmd_index].output_str,"=");
-            strcat(cmds[cmd_index].output_str,getenv(cmds[cmd_index].com_str[1]));
-            strcat(cmds[cmd_index].output_str,"\n");
-            if(cmds[cmd_index].output_to==0)
-                strcat(outputBuffer,cmds[cmd_index].output_str);
+        if(     strcmp(cmds[cmd_index].com_str[0],"exit")==0) exit(0);
+        else if(strcmp(cmds[cmd_index].com_str[0],"printenv")==0){
+            dup2(newsockfd, STDOUT_FILENO);
+            printf("%s=%s\n",cmds[cmd_index].com_str[1],getenv(cmds[cmd_index].com_str[1]));
         }
-        else if(strcmp(cmds[0].com_str[0],"setenv")==0){
+        else if(strcmp(cmds[cmd_index].com_str[0],"setenv")==0){
             setenv(cmds[cmd_index].com_str[1], cmds[cmd_index].com_str[2], 1);
             read_dir(getenv("PATH"));
         }
-        else{
-            /* create pipeline */
-            if (pipe(pipe_fd) == -1){/* 建立 pipe */
-                fprintf(stderr, "Error: Unable to create pipe.\n");
-                exit(EXIT_FAILURE);
-            }
-            
-            /* fork */
-            cmdchildpid=fork();
-            
-            if(cmdchildpid<0)  
-                perror("fork error");
-            else if(cmdchildpid==0){
-                
-                close(pipe_fd[0]);//close read
-                dup2(pipe_fd[1], STDOUT_FILENO);//redirect
-                close(pipe_fd[1]);//close write
+        else{ //other command
+            for (i=0; i<dir_num; i++){
+                if(strcmp(cmds[cmd_index].com_str[0], dir_list[i])==0 ){//is a legal command
                     
-                /* exe command */
-                exe_cmds(cmd_index);
-                
-                exit(1);
+                    /* fork */
+                    cmdchildpid=fork();
+                    
+                    if(cmdchildpid<0)
+                        perror("fork error");
+                    else if(cmdchildpid==0){//child process
+                        /* exe command */
+                        exe_cmds(cmd_index);
+                        exit(1);
+                    }
+                    else//parent process
+                        wait(&cmdchildpid);
+                    i=dir_num+1;//jump over unknown command
+                }
             }
-            else{//parent process
-                close(pipe_fd[1]);//close write
-                read(pipe_fd[0],&cmds[cmd_index].output_str,sizeof(cmds[cmd_index].output_str));
-                
-                if(cmds[cmd_index].output_to==0)
-                    strcat(outputBuffer,cmds[cmd_index].output_str);
-                wait(&cmdchildpid);
-                close(pipe_fd[0]);
+            if(i==dir_num){
+                dup2(newsockfd, STDOUT_FILENO);
+                printf("Unknown command: [%s]\n",cmds[cmd_index].com_str[0]);
+                dup2(STDOUT_FILENO, newsockfd);
             }
         }
     }
 }
 
 int main(int argc,char *argv[]){
-    int i=0;
+    int  j=0;
     strcpy(inputBuffer,"\0");
     
     /* prepare environment */
-    char *origin_PATH = getenv("PATH");
+    //char *origin_PATH = getenv("PATH");
     char *set_PATH = "./bin";
     setenv("PATH", set_PATH, 1);
-    read_dir(getenv("PATH"));
+    read_dir(getenv("PATH")); 
+    
+    for(j=0; j<10 ;j++){
+        pipe_fd[j] = malloc(sizeof(int)*2);
+        if (pipe(pipe_fd[j]) == -1){ // create pipe
+            perror( "cmd pipe error");
+            exit(EXIT_FAILURE);
+        }
+    }
     
     start_server(argc,argv);
-    wel_mes();
+    
     while(1){
         clilen = sizeof(cli_addr);
-        newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
-        
+        newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr,(socklen_t *) &clilen);
+        cmd_count=0;
+
+
         if(newsockfd<0) printf("server : accept error");
         else{
             clientchildpid=fork();
             if(clientchildpid<0)  perror("fork error");
             else if(clientchildpid==0)    break;//child process 
-        }
+        }   // chile return to wait accepting client
     }
     
     /* child process serve accepted client*/
     printf("newsockfd:%d\n",newsockfd);
     send(newsockfd,welcome_message,sizeof(welcome_message),0);
     while(1){
-        strcpy(outputBuffer,"\0");//clear buffer
         memset(cmds,0,sizeof(cmds));
-        memset(outputBuffer,'\0',sizeof(outputBuffer));
         send(newsockfd,"% ",sizeof("% "),0);
-        //write(newsockfd,"% ",sizeof("% "));
         readline(newsockfd, inputBuffer, sizeof(inputBuffer));
-        printf("Get:%s\n",inputBuffer);
         cut_pip(inputBuffer);
-        
-        
-        
         fork_cmds();
-        
-        send(newsockfd,outputBuffer,sizeof(outputBuffer),0);
-        //write(newsockfd,outputBuffer,sizeof(outputBuffer));
+        cmd_count += total_com_num;
     }
     close(newsockfd);
     exit(0);
     return(0);
 }
-
-/*//store garbage
-    
-            cmds[i].com_str[i][++space_index]!=' ' && space_index<strlen(cmds[i].com_str[0])){
-            while()
-        
-        
-        j=0;
-        space_index = 0;
-        for(k=0; k<strlen(cmds[i].com_str[0]); k++){
-            while(cmds[i].com_str[0][++space_index] != ' ' && space_index<strlen(cmds[i].com_str[0]));//find the space in com_str
-            for(j=0; j+space_index<strlen(cmds[i].com_str[0]); j++)
-                cmds[i].para[j]=cmds[i].com_str[space_index+1+j];
-            cmds[i].com_str[space_index]='\0';
-        }
-        i++;
-    }
-        
-    void str_echo(int sockfd){
-    int n;
-    char line[MAXLINE];
-
-    for(;;){
-        n = readline(sockfd, line, MAXLINE);
-        if(n==0)
-            return;
-        else if(n<0)
-            printf("str_echo : readline error");
-
-        if(write(sockfd, line, n) !=n)
-            printf("str_echo : writen error");
-    }
-}
-    //else
-    //    printf("socket create successful ,%d\n",sockfd);
-        
-    //strcpy(inputBuffer, "autoremovetag test.html | number |1 list |23 number |456 balabala");
-    else{//parent process
-        wait(&clientchildpid);
-        printf("execvp done\n\n");
-        printf("parent process");
-    }
-    
-    clientchildpid=fork();
-    if(clientchildpid<0)
-        perror("fork error");
-    
-    else if (clientchildpid == 0){ //child process
-        char * execvp_str[] = {"echo", "executed by execvp",">>", "~/abc.txt",NULL};  
-        if (execvp("echo",execvp_str) <0 ){  
-            perror("error on exec");  
-            exit(0);  
-        }
-    }else{ //parent process
-        wait(&clientchildpid);
-        printf("execvp done\n\n");
-    }
-    */

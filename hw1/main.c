@@ -1,52 +1,55 @@
+/*  
+    By Junhan Lin 0646001
+    Network programing Homework1
+    RAS(remote acess system)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>    // for wait()
-#include <arpa/inet.h>	//inet_addr
-#include <unistd.h>		//write
+#include <arpa/inet.h>  //inet_addr
+#include <unistd.h>     //write
 #include <ctype.h>
 #include <errno.h>
 #include <dirent.h>
 #include <signal.h>
+#include <time.h>
 
 #define MAXLINE               512
 #define SERV_TCP_PORT 7575
 #define COMMAND_NUM  256
 #define MESSAGE_LEN     10000
+#define total_command_number 5000
 
 
 typedef struct command{
-    int    cmd_index;
-    char   com_str[2000][256];
+    char   *com_str[50];
     int    para_len;
-    char   output_str[10000];
     int    output_to;
     int    output_to_bytes;
-    char   output_file[100];
+    char   output_file[30];
 }command_t;
 
-command_t cmds[2000];
-int *pipe_fd[5000];
-int  inputflag[5000];
+command_t cmds[5000];
+int *pipe_fd[total_command_number];
+int  inputflag[total_command_number];
 char dir_list[100][100];
 
-
-//int cut_inbuf(char inputbuf[10000]);
 
 void ptfallcmd(int cmd_count);
 int cut_pip(char inputbuf[10000],int cmd_count);
 int read_dir(char *path);
 int  readline(int fd, char *ptr, int maxlen);
 void start_server(int argc,char *argv[],int *sockfd);
-//void exe_cmds(int cmd_index,int newsockfd,int cmd_count);
 void fork_cmds(int newsockfd, int total_com_num, int cmd_count,int dir_num);
 
 void ptfallcmd(int cmd_count){
     int i=0,j=0;;
     printf("------------------------------\n");
-    while(cmds[i].com_str[0][0]!='\0'){
+    do{
         printf("count=%d,",cmd_count);
         printf("index=%d,",i);
         printf("output_to=%d,",cmds[i].output_to);
@@ -55,9 +58,7 @@ void ptfallcmd(int cmd_count){
         for(j=0; j<cmds[i].para_len; j++) //cmds[i].para_len
             printf("%s,",cmds[i].com_str[j]);
         printf("> %s,\n",cmds[i].output_file);
-        
-        i++;
-    }
+    }while(*(cmds[i++].com_str[0])!='\0');
     printf("------------------------------\n");
 }
 
@@ -82,6 +83,7 @@ int cut_inbuf(char inputbuf[10000],int cmd_count){
             }
             else{
                 flag_cmd_after_pipeline = 1;
+                cmds[temp_cmd_num].com_str[cmds[temp_cmd_num].para_len] = malloc(sizeof(t));
                 strcpy(cmds[temp_cmd_num].com_str[cmds[temp_cmd_num].para_len++], t);
             }
         }
@@ -117,8 +119,6 @@ int  readline(int fd, char *ptr, int maxlen){
     char c;
     for(n=1; n<maxlen;n++){
         if((rc=read(fd, &c, 1))==1){
-            //if(c>32 || c==10 || c==13)
-            
             if(c=='\n' || c=='\0' || c=='\r') 
                 break;
             *ptr++ = c;
@@ -141,7 +141,6 @@ void start_server(int argc,char *argv[],int *sockfd){
     if((*sockfd = socket(AF_INET, SOCK_STREAM, 0))<0)
         printf("server : can't open stream socket\n");
     
-    
     /* 2.bind */
     bzero((char *)&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -156,12 +155,13 @@ void start_server(int argc,char *argv[],int *sockfd){
         printf("server : can't bind local address\n");
         exit(0);
     }
-    else
-        printf("bind successful\n");
+    /*else
+        printf("bind successful\n");*/
     
     
     /* 3.listen */
     listen(*sockfd, 5);
+    printf("Start Server, wait client\n");
 }
 
 void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
@@ -170,25 +170,30 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
     int status;
     int cmdchildpid;
     char temp[1000];
+    int index_count_output;
+    int index_count;
     
     
-    printf("\nenter fork_cmds\n");
+    
+    //printf("\nenter fork_cmds\n");
     /* check each commands */
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
-        char * execvp_str[ cmds[cmd_index].para_len +1 ];
-        printf("\ncmd_index=%d,cmd:%s\n",cmd_index,cmds[cmd_index].com_str[0]);
+        index_count_output = cmd_index + cmd_count + cmds[cmd_index].output_to;
+        index_count        = cmd_index + cmd_count;
+        char * execvp_str[ cmds[cmd_index].para_len +1 ]; 
+        //printf("\ncmd_index=%d,cmd:%s\n",cmd_index,cmds[cmd_index].com_str[0]);
         
         //ready pipe 
-        if( cmds[cmd_index].output_to>0 &&inputflag[ cmd_index+cmd_count+cmds[cmd_index].output_to ] == 0){
-            inputflag[ cmd_index+cmd_count+cmds[cmd_index].output_to ] = 1;
-            pipe_fd[cmd_index+cmd_count+cmds[cmd_index].output_to] = malloc(sizeof(int)*2);
-            if (pipe(pipe_fd[cmd_index+cmd_count+cmds[cmd_index].output_to]) == -1){ // create pipe
+        if( cmds[cmd_index].output_to > 0 &&inputflag[ index_count_output ] == 0){
+            inputflag[ index_count_output ] = 1;
+            pipe_fd[index_count_output] = malloc(sizeof(int)*2);
+            if (pipe(pipe_fd[index_count_output]) == -1){ // create pipe
                 perror( "cmd pipe error");
                 exit(EXIT_FAILURE);
             }
         }
-            
-        
+
+
         if(strcmp(cmds[cmd_index].com_str[0],"printenv")==0){
             sprintf(temp, "%s=%s\n", cmds[cmd_index].com_str[1],getenv(cmds[cmd_index].com_str[1]));
             write(newsockfd, temp, strlen(temp));
@@ -198,11 +203,10 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
             read_dir(getenv("PATH"));
         }
         else{ //other command
-            printf("check command start\n");
+            //printf("check command start\n");
             for (i=0; i<dir_num; i++){
                 if(strcmp(cmds[cmd_index].com_str[0], dir_list[i])==0 ){//is a legal command
                     
-                    //char temp[100];
                     /* fork */
                     cmdchildpid=fork();
                     
@@ -211,9 +215,9 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
                     }
                     else if(cmdchildpid==0){//child process
                         /* set execvp_str */
-                        execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
+                        execvp_str[0] = cmds[cmd_index].com_str[0];    //execvp_str[0] = &(cmds[cmd_index].com_str[0][0]);
                         for(j=1; j<cmds[cmd_index].para_len; j++){
-                            execvp_str[j] = &cmds[cmd_index].com_str[j][0];
+                            execvp_str[j] = cmds[cmd_index].com_str[j];
                         }
                         execvp_str[j]=NULL;
                         
@@ -223,26 +227,26 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
                         }
                         
                         /* set input */
-                        if(inputflag[cmd_count+cmd_index] == 1){//have data in pipe for this cmd
-                            printf("%s:someone output to this command \n",cmds[cmd_index].com_str[0]);
-                            dup2(pipe_fd[cmd_count+cmd_index][0], STDIN_FILENO);
-                            close(pipe_fd[cmd_count+cmd_index][1]);
+                        if(inputflag[index_count] == 1){//have data in pipe for this cmd
+                            //printf("%s:someone output to this command \n",cmds[cmd_index].com_str[0]);
+                            dup2(pipe_fd[index_count][0], STDIN_FILENO);
+                            close(pipe_fd[index_count][1]);
                         }
 
                         /* set output to where */
                         if( cmds[cmd_index].output_to>0 ){
-                            printf("%s:cmds[cmd_index].output_to>0\n",cmds[cmd_index].com_str[0]);
-                            
-                            dup2(pipe_fd[cmd_count+cmd_index+cmds[cmd_index].output_to][1], STDOUT_FILENO);
-                            //sprintf(temp,"%s pipe into %d\n",cmds[cmd_index].com_str[0],pipe_fd[cmd_count+cmd_index+cmds[cmd_index].output_to][1]);
-                            //write(pipe_fd[cmd_count+cmd_index+cmds[cmd_index].output_to][1],temp,strlen(temp));
+                            dup2(pipe_fd[index_count_output][1], STDOUT_FILENO);
+                            /*printf("%s:cmds[cmd_index].output_to>0\n",cmds[cmd_index].com_str[0]);
+                            sprintf(temp,"%s pipe into %d\n",cmds[cmd_index].com_str[0],pipe_fd[cmd_count+cmd_index+cmds[cmd_index].output_to][1]);
+                            write(pipe_fd[cmd_count+cmd_index+cmds[cmd_index].output_to][1],temp,strlen(temp));
+                            */
                         }
                         else if(f_d > 0){
-                            printf("cmd_index=%d,%s:f_d > 0\n",cmd_index,cmds[cmd_index].com_str[0]);
-                            dup2(f_d, STDOUT_FILENO);//maybe error
+                            //printf("cmd_index=%d,%s:f_d > 0\n",cmd_index,cmds[cmd_index].com_str[0]);
+                            dup2(f_d, STDOUT_FILENO);
                         }
                         else{
-                            printf("%s:printf to socket\n",cmds[cmd_index].com_str[0]);
+                            //printf("%s:printf to socket\n",cmds[cmd_index].com_str[0]);
                             dup2(newsockfd, STDOUT_FILENO);
                         }
                         
@@ -256,27 +260,24 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
                         }
                     }
                     else{//parent process
-                        if(inputflag[cmd_count+cmd_index] == 1){
-                            close(pipe_fd[cmd_count+cmd_index][0]);
-                            close(pipe_fd[cmd_count+cmd_index][1]);
+                        if(inputflag[index_count] == 1){
+                            close(pipe_fd[index_count][0]);
+                            close(pipe_fd[index_count][1]);
                         }
-                        waitpid(cmdchildpid, &status,0);
+                        waitpid(cmdchildpid, &status,WNOHANG);
                     }
                     
                     i=dir_num+1;//jump over unknown command
                     break;
                 }
-            }
-
-            printf("check command finish,i=%d,\n",i);
+            }//printf("check command finish,i=%d,\n",i);
 
             if(i==dir_num){
                 sprintf(temp, "Unknown command: [%s]\n",cmds[cmd_index].com_str[0]);
-                printf("temp=%s",temp);
-                write(newsockfd, temp, strlen(temp));
+                write(newsockfd, temp, strlen(temp));//printf("temp=%s",temp);
             }
         }
-        printf("cmd_index+cmd_count=%d,inputflag=%d\n",cmd_index+cmd_count,inputflag [cmd_index+cmd_count]);
+        //printf("cmd_index+cmd_count=%d,inputflag=%d\n",cmd_index+cmd_count,inputflag [cmd_index+cmd_count]);
         if(inputflag [cmd_index+cmd_count]==1){ //close used command
             close (pipe_fd[cmd_index+cmd_count][0]);
             close (pipe_fd[cmd_index+cmd_count][1]);
@@ -293,6 +294,7 @@ int main(int argc,char *argv[]){
     char *set_PATH = "./bin";
     char inputBuffer[10000];
     
+    
     strcpy(inputBuffer,"\0"); //init inputbuffer
     memset(inputflag,0,sizeof(inputflag)); // clear flag
     setenv("PATH", set_PATH, 1);
@@ -301,25 +303,34 @@ int main(int argc,char *argv[]){
     start_server(argc,argv,&sockfd);
     
     while(1){
+        //time1 = clock();
         clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr,(socklen_t *) &clilen);
+        //printf("1,%ld\n",clock()-time1);
         
         if(newsockfd<0) printf("server : accept error");
         else{
+            //time1 = clock();
             clientchildpid=fork();
+            //printf("2,%ld\n",clock()-time1);
+            
             if(clientchildpid<0)  perror("fork error");
             else if(clientchildpid==0){//child process
                 /* child process serve accepted client*/
                 write(newsockfd,welcome_message,strlen(welcome_message));
                 
                 while(1){
+                    //time1 = clock();
                     memset(cmds,0,sizeof(cmds));
+                    //printf("3,%ld\n",clock()-time1);
+                    //time1 = clock();
                     if(readline(newsockfd, inputBuffer, sizeof(inputBuffer))>1){
-                        printf("=====================\ninputlen=%lu,inputstr=%s\n",strlen(inputBuffer),inputBuffer);
+                        //printf("=====================\ninputlen=%lu,inputstr=%s\n",strlen(inputBuffer),inputBuffer);
                         
                         total_com_num = cut_inbuf(inputBuffer,cmd_count);
-                        printf("exit cutinbuf total_com_num=%d\n",total_com_num);
-                        ptfallcmd(cmd_count);
+                        //printf("exit cutinbuf total_com_num=%d\n",total_com_num);
+                        //ptfallcmd(cmd_count);
+                        
                         
                         if(strcmp(inputBuffer, "exit") == 0){
                             close(newsockfd);
@@ -329,8 +340,9 @@ int main(int argc,char *argv[]){
                         
                         fork_cmds(newsockfd,total_com_num,cmd_count, dir_num);
                         cmd_count += total_com_num;
-                        printf("done:%s\n",inputBuffer);
-
+                        printf("%d\n",cmd_count);
+                        write(newsockfd,"% ",strlen("% "));
+                        /*printf("done:%s\n",inputBuffer);
                         if(strcmp(inputBuffer, "exit") != 0){
                             printf("inputBuffer != exit ,%s,\n",inputBuffer);
                             write(newsockfd,"% ",strlen("% "));
@@ -339,8 +351,11 @@ int main(int argc,char *argv[]){
                         }
                         else{
                             printf("inputBuffer == exit ,%s,\n",inputBuffer);
-                        }
+                        }*/
+                        
                     }
+                    //printf("4,%ld\n",clock()-time1);
+                    
                 }
             }
             else { //parent
@@ -350,13 +365,3 @@ int main(int argc,char *argv[]){
     }
     return(0);
 }
-
-
-
-
-/*if(     strcmp(cmds[cmd_index].com_str[0],"exit")==0) {
-            close(newsockfd);
-            printf("===exit===\n");
-            exit(0);
-        }
-        else*/ 

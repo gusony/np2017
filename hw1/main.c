@@ -62,7 +62,7 @@ void ptfallcmd(int cmd_count){
     printf("------------------------------\n");
 }
 
-int cut_inbuf(char inputbuf[10000],int cmd_count){
+int cut_inbuf(char inputbuf[MESSAGE_LEN],int cmd_count){
     int temp_cmd_num=0;
     int flag_cmd_after_pipeline=0;
     char *t = strtok(inputbuf, " ");//printf("first t=%s\n",t);
@@ -155,9 +155,6 @@ void start_server(int argc,char *argv[],int *sockfd){
         printf("server : can't bind local address\n");
         exit(0);
     }
-    /*else
-        printf("bind successful\n");*/
-    
     
     /* 3.listen */
     listen(*sockfd, 5);
@@ -196,6 +193,9 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
 
         if(strcmp(cmds[cmd_index].com_str[0],"printenv")==0){
             sprintf(temp, "%s=%s\n", cmds[cmd_index].com_str[1],getenv(cmds[cmd_index].com_str[1]));
+            if(strcmp(getenv(cmds[cmd_index].com_str[1]),"bin")==0){
+                sprintf(temp, "%s=%s:.\n", cmds[cmd_index].com_str[1],getenv(cmds[cmd_index].com_str[1]));
+            }
             write(newsockfd, temp, strlen(temp));
         }
         else if(strcmp(cmds[cmd_index].com_str[0],"setenv")==0){
@@ -264,7 +264,7 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
                             close(pipe_fd[index_count][0]);
                             close(pipe_fd[index_count][1]);
                         }
-                        waitpid(cmdchildpid, &status,WNOHANG);
+                        waitpid(cmdchildpid, &status,0);
                     }
                     
                     i=dir_num+1;//jump over unknown command
@@ -273,7 +273,7 @@ void fork_cmds(int newsockfd, int total_com_num, int cmd_count, int dir_num){
             }//printf("check command finish,i=%d,\n",i);
 
             if(i==dir_num){
-                sprintf(temp, "Unknown command: [%s]\n",cmds[cmd_index].com_str[0]);
+                sprintf(temp, "Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
                 write(newsockfd, temp, strlen(temp));//printf("temp=%s",temp);
             }
         }
@@ -291,47 +291,35 @@ int main(int argc,char *argv[]){
     int sockfd=0,newsockfd=0,clilen=0,clientchildpid=0,total_com_num=0,cmd_count=0,dir_num=0;
     char welcome_message[]="****************************************\n** Welcome to the information server. **\n****************************************\n% ";
     struct sockaddr_in cli_addr;
-    char *set_PATH = "./bin";
-    char inputBuffer[10000];
+    //char *set_PATH = "bin";
+    char inputBuffer[MESSAGE_LEN];
     
     
     strcpy(inputBuffer,"\0"); //init inputbuffer
     memset(inputflag,0,sizeof(inputflag)); // clear flag
-    setenv("PATH", set_PATH, 1);
-    dir_num = read_dir(getenv("PATH")); 
-    
+    setenv("PATH", "bin", 1);
+    dir_num = read_dir(getenv("PATH"));
     start_server(argc,argv,&sockfd);
     
     while(1){
-        //time1 = clock();
         clilen = sizeof(cli_addr);
-        newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr,(socklen_t *) &clilen);
-        //printf("1,%ld\n",clock()-time1);
+        newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr,(socklen_t *) &clilen);//wait client connet to this server
         
         if(newsockfd<0) printf("server : accept error");
         else{
-            //time1 = clock();
             clientchildpid=fork();
-            //printf("2,%ld\n",clock()-time1);
-            
             if(clientchildpid<0)  perror("fork error");
             else if(clientchildpid==0){//child process
                 /* child process serve accepted client*/
                 write(newsockfd,welcome_message,strlen(welcome_message));
                 
                 while(1){
-                    //time1 = clock();
                     memset(cmds,0,sizeof(cmds));
-                    //printf("3,%ld\n",clock()-time1);
-                    //time1 = clock();
                     if(readline(newsockfd, inputBuffer, sizeof(inputBuffer))>1){
-                        //printf("=====================\ninputlen=%lu,inputstr=%s\n",strlen(inputBuffer),inputBuffer);
-                        
+                        printf("inputBuffer == exit ,%s,\n",inputBuffer);
                         total_com_num = cut_inbuf(inputBuffer,cmd_count);
-                        //printf("exit cutinbuf total_com_num=%d\n",total_com_num);
+                        
                         //ptfallcmd(cmd_count);
-                        
-                        
                         if(strcmp(inputBuffer, "exit") == 0){
                             close(newsockfd);
                             printf("\n===exit===\n");
@@ -340,22 +328,8 @@ int main(int argc,char *argv[]){
                         
                         fork_cmds(newsockfd,total_com_num,cmd_count, dir_num);
                         cmd_count += total_com_num;
-                        printf("%d\n",cmd_count);
                         write(newsockfd,"% ",strlen("% "));
-                        /*printf("done:%s\n",inputBuffer);
-                        if(strcmp(inputBuffer, "exit") != 0){
-                            printf("inputBuffer != exit ,%s,\n",inputBuffer);
-                            write(newsockfd,"% ",strlen("% "));
-                            
-                            printf("send pa finish\n");
-                        }
-                        else{
-                            printf("inputBuffer == exit ,%s,\n",inputBuffer);
-                        }*/
-                        
                     }
-                    //printf("4,%ld\n",clock()-time1);
-                    
                 }
             }
             else { //parent

@@ -173,8 +173,6 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
     int illegal_flag = 1;
     
     
-    
-    
     /* check each commands */
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
         index_count_output = cmd_index + cmd_count + cmds[cmd_index].output_to;
@@ -264,7 +262,8 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
                         close (pipe_fd[index_count][1]);
                         inputflag [index_count]=0;
                     }
-                    waitpid(cmdchildpid, &status,0);
+                    waitpid(cmdchildpid, &status,WUNTRACED);
+                    kill(cmdchildpid,SIGKILL);
                 }
             }
             if(inputflag [index_count]==1 ){ //close used command
@@ -282,15 +281,12 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
             sprintf(temp, "Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
             write(newsockfd, temp, strlen(temp));//printf("temp=%s",temp);
             
-            
             if(cmd_index == 0){
-                
                 if(inputflag [index_count]==1){ //close used command
                     close (pipe_fd[index_count][0]);
                     close (pipe_fd[index_count][1]);
                 }
             }
-            
             return(real_do_num);
         }
         
@@ -305,6 +301,7 @@ int main(int argc,char *argv[]){
     struct sockaddr_in cli_addr;
     //char *set_PATH = "bin";
     char inputBuffer[MESSAGE_LEN];
+    int status;
     
     strcpy(inputBuffer,"\0"); //init inputbuffer
     memset(inputflag,0,sizeof(inputflag)); // clear flag
@@ -344,6 +341,8 @@ int main(int argc,char *argv[]){
                 }
             }
             else { //parent
+            	waitpid(clientchildpid, &status,WUNTRACED);
+            	kill(clientchildpid,SIGKILL);
                 close(newsockfd);
             }
         }   

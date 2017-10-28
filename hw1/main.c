@@ -88,11 +88,11 @@ int cut_inbuf(char inputbuf[MESSAGE_LEN],int cmd_count){
             }
         }
         t = strtok(NULL, " ");
-    }//ptfallcmd( cmd_count);
+    }
     
     if(flag_cmd_after_pipeline){
         temp_cmd_num++;
-    }//printf("in cut temp_cmd_num : %d\n",temp_cmd_num);
+    }
     
     return(temp_cmd_num);
 }

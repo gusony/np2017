@@ -1,0 +1,23 @@
+****************************************
+** Welcome to the information server. **
+****************************************
+% printenv PATH
+PATH=bin:.
+% ls -S
+bin
+outtest2.txt
+outtest1.txt
+test.html
+ls.txt
+% setenv PATH .
+% printenv PATH
+PATH=.
+% ls
+Unknown command: [ls].
+% setenv PATH bin
+% setenv LANG en_US
+% printenv LANG
+LANG=en_US
+% date
+Unknown command: [date].
+% exit

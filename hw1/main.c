@@ -51,7 +51,6 @@ void ptfallcmd(int total_com_num){
     int i=0,j=0;
     printf("------------------------------\n");
     for(i=0; i<total_com_num ; i++ ){
-        //printf("count=%d,",cmd_count);
         printf("index=%d,",i);
         printf("output_to=%d,",cmds[i].output_to);
         printf("para_len=%d,",cmds[i].para_len);
@@ -59,7 +58,7 @@ void ptfallcmd(int total_com_num){
         for(j=0; j<cmds[i].para_len; j++) 
             printf("%s,",cmds[i].com_str[j]);
         printf("> %s,\n",cmds[i].output_file);
-    }//while( cmds[++i].com_str[j] );
+    }
     printf("------------------------------\n");
 }
 

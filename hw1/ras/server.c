@@ -18,10 +18,11 @@
 #include <signal.h>
 #include <time.h>
 
-#define MAXLINE               512
-#define SERV_TCP_PORT 7575
-#define COMMAND_NUM  256
-#define MESSAGE_LEN     10000
+#define MAXLINE              512
+#define COMMAND_NUM          256
+#define CLIENT_NUMBERS       50
+#define MESSAGE_LEN          10000
+#define SERV_TCP_PORT        7575
 #define total_command_number 5000
 
 
@@ -31,17 +32,23 @@ typedef struct command{
     int    output_to;
     int    output_to_bytes;
     char   output_file[30];
-    int    output_line;
 }command_t;
 
-command_t cmds[5000];
+typedef struct client_t{
+    int  id;
+    char name;
+    char ip[15];
+    int  port;
+    int  fd;//socket fd
+    char path;
+}client_t;
+
+
+command_t cmds[total_command_number];
 int *pipe_fd[total_command_number];
 int  inputflag[total_command_number];
 char dir_list[100][100];
 char dir_str[100]="\0";
-int line_count=0;
-int *line_pipe_fd;
-int line_pipe_flag=0;
 
 
 void ptfallcmd(int total_com_num);
@@ -58,7 +65,6 @@ void ptfallcmd(int total_com_num){
         //printf("count=%d,",cmd_count);
         printf("index=%d,",i);
         printf("output_to=%d,",cmds[i].output_to);
-        printf("output_line=%d,",cmds[i].output_line);
         printf("para_len=%d,",cmds[i].para_len);
         printf("com_str=");
         for(j=0; j<cmds[i].para_len; j++) 
@@ -72,19 +78,13 @@ int cut_inbuf(char inputbuf[MESSAGE_LEN],int cmd_count){
     int temp_cmd_num=0;
     int flag_cmd_after_pipeline=0;
     char *t = strtok(inputbuf, " ");//printf("first t=%s\n",t);
-    int temp;
-
+    
     while(t != NULL && t[0]>31){
         if(t[0] == '|'){
             t[0] = '0';
-            temp = atoi(t);
             cmds[temp_cmd_num].output_to=atoi(t);
-            
-            if(temp>0)
-                cmds[temp_cmd_num].output_line=temp;
-            else if(temp==0 )
+            if(cmds[temp_cmd_num].output_to==0)
                  cmds[temp_cmd_num].output_to = 1;
-
             temp_cmd_num++;
             flag_cmd_after_pipeline=0;
         }
@@ -184,6 +184,8 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
     int illegal_flag = 1;
     
     
+    
+    
     /* check each commands */
     for(cmd_index=0; cmd_index<total_com_num; cmd_index++){
         index_count_output = cmd_index + cmd_count + cmds[cmd_index].output_to;
@@ -195,18 +197,7 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
             printf("legal command:%s\n",cmds[cmd_index].com_str[0]);
             
             //need output to ,so create a pipe
-            
-            if(cmds[cmd_index].output_line>0 && line_pipe_flag==0 ){
-                printf("1.parpare output pipe\n");
-                line_pipe_flag = cmds[cmd_index].output_line + line_count;
-                line_pipe_fd=malloc(sizeof(int)*2);
-                if (pipe(line_pipe_fd) == -1){ // create pipe
-                    perror( "cmd pipe error");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            else if( cmds[cmd_index].output_to > 0 &&inputflag[ index_count_output ] == 0 ){
-                printf("2.\n");
+            if( cmds[cmd_index].output_to > 0 &&inputflag[ index_count_output ] == 0 ){
                 inputflag[ index_count_output ] = 1;
                 pipe_fd[index_count_output] = malloc(sizeof(int)*2);
                 if (pipe(pipe_fd[index_count_output]) == -1){ // create pipe
@@ -247,14 +238,7 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
                     }
                     
                     /* set input */
-                    if(line_pipe_flag > 1 && line_pipe_flag==line_count){
-                        printf("line pipe flag \n");
-                        if(dup2(line_pipe_fd[0], STDIN_FILENO)==-1){
-                            perror("dup2 output error");
-                        }
-                        close(line_pipe_fd[1]);
-                    }
-                    else if(inputflag[index_count] == 1){//have data in pipe for this cmd
+                    if(inputflag[index_count] == 1){//have data in pipe for this cmd
                         printf("%s:someone output to this command \n",cmds[cmd_index].com_str[0]);
                         if(dup2(pipe_fd[index_count][0], STDIN_FILENO)==-1){
                             perror("dup2 output error");
@@ -263,12 +247,7 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
                     }
 
                     /* set output to where */
-                    if(cmds[cmd_index].output_line>0){
-                        printf("set pipe to line\n");
-                        //cmds[cmd_index].output_line =cmds[cmd_index].output_to;
-                        dup2(line_pipe_fd[1], STDOUT_FILENO);
-                    }
-                    else if( cmds[cmd_index].output_to == 1 ){
+                    if( cmds[cmd_index].output_to>0 ){
                         printf("%s:cmds[cmd_index].output_to>0\n",cmds[cmd_index].com_str[0]);
                         dup2(pipe_fd[index_count_output][1], STDOUT_FILENO);
                     }
@@ -296,13 +275,7 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
                         close (pipe_fd[index_count][1]);
                         inputflag [index_count]=0;
                     }
-                    if(line_pipe_flag > 1 && line_pipe_flag==line_count){
-                        line_pipe_flag=0;
-                        close(line_pipe_fd[0]);
-                        close(line_pipe_fd[1]);
-                    }
-                    waitpid(cmdchildpid, &status,WUNTRACED);
-                    kill(cmdchildpid,SIGKILL);
+                    waitpid(cmdchildpid, &status,0);
                 }
             }
             if(inputflag [index_count]==1 ){ //close used command
@@ -320,12 +293,15 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
             sprintf(temp, "Unknown command: [%s].\n",cmds[cmd_index].com_str[0]);
             write(newsockfd, temp, strlen(temp));//printf("temp=%s",temp);
             
+            
             if(cmd_index == 0){
+                
                 if(inputflag [index_count]==1){ //close used command
                     close (pipe_fd[index_count][0]);
                     close (pipe_fd[index_count][1]);
                 }
             }
+            
             return(real_do_num);
         }
         
@@ -340,7 +316,6 @@ int main(int argc,char *argv[]){
     struct sockaddr_in cli_addr;
     //char *set_PATH = "bin";
     char inputBuffer[MESSAGE_LEN];
-    int status;
     
     strcpy(inputBuffer,"\0"); //init inputbuffer
     memset(inputflag,0,sizeof(inputflag)); // clear flag
@@ -362,7 +337,7 @@ int main(int argc,char *argv[]){
                 while(1){
                     memset(cmds,0,sizeof(cmds));
                     if(readline(newsockfd, inputBuffer, sizeof(inputBuffer))>1){
-                        line_count++;
+                        
                         total_com_num = cut_inbuf(inputBuffer,cmd_count);
                         
                         if(strcmp(inputBuffer, "exit") == 0){
@@ -380,8 +355,6 @@ int main(int argc,char *argv[]){
                 }
             }
             else { //parent
-            	waitpid(clientchildpid, &status,WUNTRACED);
-            	kill(clientchildpid,SIGKILL);
                 close(newsockfd);
             }
         }   

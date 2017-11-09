@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -19,12 +20,13 @@
 #include <time.h>
 
 //my define
-#define NAME_LEN             20
 #define BUFFER_SIZE          50
 #define MESSAGE_LEN          10000
+#define NAME_LENGTH          20
 #define SERV_TCP_PORT        7575
 #define CLIENT_NUMBERS       50
 #define total_command_number 5000
+
 
 //my struct
 typedef struct command{
@@ -38,23 +40,24 @@ typedef struct command{
 }command_t;
 typedef struct client_t{
     int  id;
-    char name[NAME_LEN];
+    char name[NAME_LENGTH];
     char ip[15];
-    char  port[6];
+    char port[6];
     int  fd;//socket fd
     char path;
     char inputBuffer[MESSAGE_LEN];
+    bool block[CLIENT_NUMBERS];//??????????
 }client_t;
 
 //global var
 command_t cmds[total_command_number];
 int *pipe_fd[total_command_number];
 int  inputflag[total_command_number];
-char dir_list[100][100];
-char dir_str[100]="\0";
+//char dir_list[100][100];
+//char dir_str[100]="\0";
 
 //function
-int GetNewClentId(int client_id_used_flag[CLIENT_NUMBERS]);
+int GetNewClentId(bool client_id_used_flag[CLIENT_NUMBERS]);
 void ptfallcmd(int total_com_num);
 int  cut_pip(char inputbuf[10000],int cmd_count);
 int  readline(int fd, char *ptr, int maxlen);
@@ -63,13 +66,6 @@ int  fork_cmds(int newsockfd, int total_com_num, int cmd_count);
 int  check_legal_cmd(char *cmd);
 
 //function
-int GetNewClentId(int client_id_used_flag[CLIENT_NUMBERS]){
-    for (int i=0; i<CLIENT_NUMBERS; ++i)
-        if(client_id_used_flag[i] == 0)
-            return(i);
-
-    return(-1);//too many client
-}
 void ptfallcmd(int total_com_num){
     int i=0,j=0;
     printf("------------------------------\n");
@@ -316,20 +312,38 @@ int fork_cmds(int newsockfd, int total_com_num, int cmd_count){
     }
     return(real_do_num);
 }
-int cmdWho(int fromId){
+int GetNewClentId(bool client_id_used_flag[CLIENT_NUMBERS]){
+    for (int i=0; i<CLIENT_NUMBERS; ++i)
+        if(client_id_used_flag[i] == false)
+            return(i);
+
+    return(-1);//too many client
+}
+int GetIdByfd(client_t *clients[CLIENT_NUMBERS],bool clientflag[CLIENT_NUMBERS],int fd){//return id of the fd
+	for(int i ;i<CLIENT_NUMBERS; i++)
+		if(clients[i]->fd == fd && clientflag[i]==1)
+			return(clients[i]->id);
+	return(-1);
+}
+void cmdWho(client_t *clients[CLIENT_NUMBERS],bool clientflag[CLIENT_NUMBERS],int fromId){
+	const char whoStr[] = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
+	char msg[BUFFER_SIZE];
     write(clients[fromId]->fd, whoStr, strlen(whoStr));
     for(int i=0; i<CLIENT_NUMBERS; ++i)
     {
-        if(!clientsFlag[i]) continue;
-        sprintf(msg, whoFormatStr, i+1, clients[i]->name, clients[i]->ip, clients[i]->port, (i==fromId?"\t<-me":""));
+        if(!clientflag[i]) continue;
+        sprintf(msg, "%d\t%s\t%s/%s%s\n", i+1, clients[i]->name, clients[i]->ip, clients[i]->port, (i==fromId?"\t<-me":""));
         write(clients[fromId]->fd, msg, strlen(msg));
     }
 }
-int cmdTell(int fromId, char *cmd){
+void cmdTell(client_t *clients[CLIENT_NUMBERS],bool clientflag[CLIENT_NUMBERS],int fromId, char *cmd){
     char toIdc[2];
+    char msg[BUFFER_SIZE];
+    const char tellStr[] = "*** %s told you ***: %s\n";
+    const char tellFailStr[] = "*** Error: user #%s does not exist yet. ***\n";
     sscanf(cmd, "%s", toIdc);
     int toId = atoi(toIdc);
-    if(toId > 0 && toId <= CLIENT_NUMBERS && clientsFlag[toId-1])
+    if(toId > 0 && toId <= CLIENT_NUMBERS && clientflag[toId-1])
     {
         if( !(clients[toId - 1]->block[fromId]))
         {
@@ -343,20 +357,23 @@ int cmdTell(int fromId, char *cmd){
         write(clients[fromId]->fd, msg, strlen(msg));
     }
 }
-int cmdYell(const char *msg, int msgLength, int fromId, bool selfShow){
+void cmdYell(client_t *clients[CLIENT_NUMBERS],bool clientflag[CLIENT_NUMBERS],const char *msg, int msgLength, int fromId, bool selfShow){
     for(int i=0; i<CLIENT_NUMBERS; ++i)
-        if(!clientsFlag[i]) continue;
+        if(!clientflag[i]) continue;
         else if(!selfShow && i == fromId) continue;
         else if(clients[i]->block[fromId]) continue;
         else
             write(clients[i]->fd, msg, msgLength);
 }
-int cmdName(int fromId, char *name){
+int cmdName(client_t *clients[CLIENT_NUMBERS],bool clientflag[CLIENT_NUMBERS],int fromId, char *name){
+    char msg[BUFFER_SIZE];
+    const char nameExistStr[] = "*** User '%s' already exists. ***\n";
+    const char nameStr[] = "*** User from %s/%s is named '%s'. ***\n";
+
     if(strlen(name) > NAME_LENGTH) name[NAME_LENGTH] = '\0';
     for(int i=0; i<CLIENT_NUMBERS; ++i)
     {
-        if(clientsFlag[i] && !strcmp(clients[i]->name, name))
-        {
+        if(clientflag[i] && !strcmp(clients[i]->name, name)){//name existed!
             sprintf(msg, nameExistStr, name);
             write(clients[fromId]->fd, msg, strlen(msg));
             return 0;
@@ -364,29 +381,30 @@ int cmdName(int fromId, char *name){
     }
     strcpy(clients[fromId]->name, name);
     sprintf(msg, nameStr, clients[fromId]->ip, clients[fromId]->port, name);
-    cmdYell(msg, strlen(msg), fromId, true);
+    cmdYell(clients, clientflag, msg, strlen(msg), fromId, true);
+    return(1);
 }
-int cmdBlock(int fromId, char *cmd){
-        char toIdc[2];
-        sscanf(cmd, "%s", toIdc);
-        int toId = atoi(toIdc);
+/*int cmdBlock(client_t *clients[CLIENT_NUMBERS],int fromId, char *cmd){
+    char toIdc[2];
+    sscanf(cmd, "%s", toIdc);
+    int toId = atoi(toIdc);
     clients[fromId]->block[toId - 1] = 1;
-}
+}*/
 
 int main(int argc,char *argv[]){
-    int msockfd=0,newsockfd=0,clilen=0,clientchildpid=0,total_com_num=0,cmd_count=0;
+    int msockfd=0,newsockfd=0,clilen=0,total_com_num=0,cmd_count=0;//clientchildpid=0,
     char welcome_message[]="****************************************\n** Welcome to the information server. **\n****************************************\n";
     struct sockaddr_in cli_addr;
     //char inputBuffer[MESSAGE_LEN];
     fd_set rfds, afds;
     int nfds;
     int id;
-    int client_id_used_flag[CLIENT_NUMBERS];
+    bool client_id_used_flag[CLIENT_NUMBERS];
     client_t *clients[CLIENT_NUMBERS];
 
     //init
     for (int i=0; i<CLIENT_NUMBERS; i++){
-        client_id_used_flag[i]=0;
+        client_id_used_flag[i]=false;
     }
 
     //strcpy(inputBuffer,"\0"); //init inputbuffer
@@ -398,7 +416,7 @@ int main(int argc,char *argv[]){
     nfds = msockfd + CLIENT_NUMBERS + 500;//getdtablesize();
     FD_ZERO(&afds);
     FD_SET(msockfd, &afds);
-    client_id_used_flag[msockfd]=1;
+    client_id_used_flag[msockfd]=true;
 
     //ready to receive client
     while(1){
@@ -425,7 +443,7 @@ int main(int argc,char *argv[]){
                 printf("Server:too many client\n");
                 //exit(0);
             }
-            client_id_used_flag[id] = 1;
+            client_id_used_flag[id] = true;
             client_t *cli = malloc(sizeof(client_t));
             cli->id = id;
             cli->fd = newsockfd;
@@ -438,25 +456,28 @@ int main(int argc,char *argv[]){
             FD_SET(newsockfd, &afds);
 
             //send welcome msg
-
             write(newsockfd,welcome_message,strlen(welcome_message));
-            char msg[BUFFER_SIZE] ;
+            char msg[BUFFER_SIZE];
             sprintf(msg, "*** User '(no name)' entered from %s/%s. ***\n",cli->ip, cli->port);
             write(newsockfd,msg,strlen(msg));
             write(newsockfd,"% ",strlen("% "));
-            cmdYell(msg, strlen(msg), id, false);
+            cmdYell(clients, client_id_used_flag, msg, strlen(msg), id, false);
         }
         else{//old client
-            for(int fd=0; fd<nfds; fd++){
-                if(fd!=msockfd && FD_ISSET(fd,&rfds)){
+            for(int fd=0; fd<nfds; fd++){ //for all client
+                if(fd!=msockfd && FD_ISSET(fd,&rfds)){//not master and fd in rfds after select
                     memset(cmds,0,sizeof(cmds));
+
+                    char * inputBuffer = malloc(sizeof(char)*BUFFER_SIZE);
+                    strcpy(inputBuffer,"\0");
+
                     if(readline(newsockfd, inputBuffer, sizeof(inputBuffer))>1){
-                        total_com_num = cut_inbuf(inputBuffer,cmd_count);
+                        total_com_num = cut_inbuf(inputBuffer, cmd_count);
                         if(strcmp(inputBuffer, "exit") == 0){
                             close(fd);
                             printf("\n===exit===\n");
                         }
-
+                        strcpy(clients[GetIdByfd(clients, client_id_used_flag, fd)]->inputBuffer , inputBuffer);
                         ptfallcmd(total_com_num);
                         cmd_count += fork_cmds(newsockfd,total_com_num,cmd_count);
                         printf("cmd_count=%d,\nexit for_cmds\n",cmd_count);
@@ -464,7 +485,6 @@ int main(int argc,char *argv[]){
                     }
                 }
             }
-
         }
     	/*
         if(newsockfd<0) printf("server : accept error");

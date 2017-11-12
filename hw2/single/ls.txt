@@ -1,0 +1,7 @@
+baozi
+bin
+ls.txt
+makefile
+test1.txt
+test2.txt
+test.html

@@ -23,11 +23,11 @@
 #define MCN                  5000 //max_command_number
 #define EPNM                 50   //EXEC_PARA_NUM_MAX
 #define PATH_LEN             50
-#define BUFFER_SIZE          50
+#define BUFFER_SIZE          100
 #define MESSAGE_LEN          10000
 #define NAME_LENGTH          20
 #define SERV_TCP_PORT        7575
-#define CLIENT_NUMBERS       30
+#define CLIENT_NUMBERS       31 //no use id0
 
 
 typedef struct command{
@@ -61,38 +61,61 @@ typedef struct client_t{
 // global var
 client_t *clients[CLIENT_NUMBERS];
 bool clientflag  [CLIENT_NUMBERS];
+bool path_def_flag[CLIENT_NUMBERS];
 char DEFAULT_PATH[] = "bin:.";
-char DEFAULT_NAME[] =  "(no name)";
+char DEFAULT_NAME[] = "(no name)";
 int msockfd = 0;
+const char whoStr[]                 = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
+const char tellStr[]                = "*** %s told you ***: %s\n";
+const char nameExistStr[]           = "*** User '%s' already exists. ***\n";
+const char nameStr[]                = "*** User from %s/%s is named '%s'. ***\n";
+const char publicPipeOutStr[]       = "*** %s (#%d) just piped '%s' to %s (#%d) ***\n";
+const char reve_pipe_from[]         = "*** %s (#%d) just received from %s (#%d) by '%s' ***\n";
+const char welcome_message[]        = "****************************************\n** Welcome to the information server. **\n****************************************\n";
+const char enter_str[]              = "*** User '(no name)' entered from %s/%s. ***\n";
+const char exitStr[]                = "*** User '%s' left. ***\n";
+const char who_yell[]               = "*** %s yelled ***: %s\n";
+const char tellFailStr[]            = "*** Error: user #%s does not exist yet. ***\n";
+const char user_already_exist_str[] = "*** Error: the pipe #%d->#%d already exists. ***\n";
+const char pipe_not_exist_str[]     = "*** Error: the pipe #%d->#%d does not exist yet. ***\n";
+const char user_not_exist_str[]     = "*** Error: user #%d does not exist yet. ***\n";
 
 //function
 void initallclient(void){
     for(int i=0; i<CLIENT_NUMBERS; i++){
-        clients[i]    = malloc(sizeof(client_t));
+    	clients[i]    = malloc(sizeof(client_t));
         memset(clients[i], 0, sizeof(client_t));
+        for (int j=0; j<CLIENT_NUMBERS; j++)
+            clients[i]->cp[j] = NULL;
         strcpy(clients[i]->name,DEFAULT_NAME);
-        clients[i]->id = -1;
+        clients[i]->id = 0;
         clients[i]->fd = -1;
         clients[i]->olcn = -1;
         clientflag[i] = false;
+        path_def_flag[i] = true;
         strcpy(clients[i]->path, DEFAULT_PATH); //init path
     }
 }
 void closeclient(int id){
-	close(clients[id]->fd);
+
+	//close(clients[id]->fd);
+    shutdown(clients[id]->fd,2);
+
+    free(clients[id]);
+    clients[id] = malloc(sizeof(client_t));
     memset(clients[id], 0, sizeof(client_t));
-    clients[id]->id = -1;
+    strcpy(clients[id]->name,DEFAULT_NAME);
+    strcpy(clients[id]->path, DEFAULT_PATH); //init path
+    clients[id]->id = 0;
     clients[id]->fd = -1;
     clients[id]->olcn = -1;
     clientflag[id] = false;
-    strcpy(clients[id]->path, DEFAULT_PATH);
 }
 void ptfallcmd(int id){
     printf("------------------------------\n");
     for(int i=clients[id]->cmd_counts; i < clients[id]->olcn +clients[id]->cmd_counts; i++ ){
     	printf("id=%2d,", id);
-        printf("index=%2d,", i);
-        printf("cmd_counts=%d,", clients[id]->cmd_counts);
+        printf("cmd_counts=%2d,", clients[id]->cmd_counts);
         printf("to_cmd=%2d,",    clients[id]->cmds[i].to_cmd);
         printf("to_client=%d,",  clients[id]->cmds[i].to_client);
         printf("from_client=%d,",clients[id]->cmds[i].from_client);
@@ -117,9 +140,16 @@ void cut_inbuf(int id){ //return(olcn)
     int flag_cmd_after_pipeline=0;
 
     char *t = strtok(inputbuf, " ");
+    bool resetflag = false;
 
     while(t != NULL && t[0]>31){
+    	if(!resetflag){
+	    	clients[id]->cmds[ Ccounts + olcn ].to_client=0;
+	    	clients[id]->cmds[ Ccounts + olcn ].from_client=0;
+        	resetflag = true;
+        }
         if(t[0] == '|'){
+        	resetflag=false;
             t[0] = '0';
             paralen = 0;
             clients[id]->cmds[ Ccounts + olcn ].to_cmd = atoi(t);
@@ -221,69 +251,75 @@ int check_legal_cmd(char *cmd){
     return(0);
 }
 int GetNewClentId(){
-    for (int i=0; i<CLIENT_NUMBERS; ++i)
+    for (int i=1; i<CLIENT_NUMBERS; ++i)
         if(clientflag[i] == false)
             return(i);
 
     return(-1);//too many client
 }
 int GetIdByfd(int fd){//return id of the fd
-	for(int i ;i<CLIENT_NUMBERS; i++)
+	for(int i=1;i<CLIENT_NUMBERS; i++)
 		if(clients[i]->fd == fd && clientflag[i]==1)
 			return(clients[i]->id);
 	return(-1);
 }
 void cmdWho(int id){
-	const char whoStr[] = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
 	char msg[BUFFER_SIZE];
     write(clients[id]->fd, whoStr, strlen(whoStr));
     for(int i=0; i<CLIENT_NUMBERS; ++i){
         if(!clientflag[i]) continue;
-        else if(clients[id]->fd == msockfd) continue;
-        sprintf(msg, "%d\t%s\t%s/%s%s\n", i+1, clients[i]->name, clients[i]->ip, clients[i]->port, (i==id?"\t<-me":""));
+        sprintf(msg, "%d\t%s\t%s/%s%s\n", i, clients[i]->name, clients[i]->ip, clients[i]->port, (i==id?"\t<-me":""));
         write(clients[id]->fd, msg, strlen(msg));
     }
 }
 void cmdTell(int fromId){
-	char *cmd = malloc(sizeof(char)*BUFFER_SIZE);
-	int *not_impotr_id;
+    int i;
+    char copycmd[BUFFER_SIZE];
+    strcpy(copycmd,clients[fromId]->inputBuffer);
+    for(i=0;i<strlen(copycmd)-5;i++){
+        copycmd[i]=copycmd[i+5];
+    }
+    copycmd[i]='\0';
+    strcat(copycmd,"\r\n");
+    //printf("copycmd=%s\n",copycmd);
+
+    char *cmd=malloc(sizeof(char)*BUFFER_SIZE);
+    strcpy(cmd, copycmd);
     char toIdc[2];
     char msg[BUFFER_SIZE];
-    const char tellStr[] = "*** %s told you ***: %s\n";
-    const char tellFailStr[] = "*** Error: user #%s does not exist yet. ***\n";
 
-    sscanf(clients[fromId]->inputBuffer,"tell %d %s",not_impotr_id,cmd);
 
     sscanf(cmd, "%s", toIdc);//cmd first string put in toIdc
     int toId = atoi(toIdc);
-    if(toId > 0 && toId <= CLIENT_NUMBERS && clientflag[toId-1]){
+    if(toId > 0 && toId <= CLIENT_NUMBERS && clientflag[toId]){
         sprintf(msg, tellStr, clients[fromId]->name, cmd+strlen(toIdc)+1);
-        write(clients[toId-1]->fd, msg, strlen(msg));
+        write(clients[toId]->fd, msg, strlen(msg));
     }
     else{
-        sprintf(msg, tellFailStr, toIdc);
+        sprintf(msg, tellFailStr, toIdc-2);
         write(clients[fromId]->fd, msg, strlen(msg));
     }
 }
 void cmdYell(const char *msg, int msgLength, int fromId, bool selfShow){
-	for(int i=0; i<CLIENT_NUMBERS; ++i)
+	for(int i=1; i<CLIENT_NUMBERS; ++i)
         if(!clientflag[i]) continue;
         else if(!selfShow && i == fromId) continue;
-        else
+        else{
             write(clients[i]->fd, msg, msgLength);
+            //write(clients[i]->fd, "\r\n", strlen("\n"));
+        }
 }
 int cmdName(int fromId){
 	char *name =malloc(sizeof(char)*BUFFER_SIZE);
 	sscanf(clients[fromId]->inputBuffer, "name %s",name);
     char msg[BUFFER_SIZE];
-    const char nameExistStr[] = "*** User '%s' already exists. ***\n";
-    const char nameStr[] = "*** User from %s/%s is named '%s'. ***\n";
+
 
     if(strlen(name) > NAME_LENGTH) name[NAME_LENGTH] = '\0';
     for(int i=0; i<CLIENT_NUMBERS; ++i)
     {
         if(clientflag[i] && !strcmp(clients[i]->name, name)){//name existed!
-            sprintf(msg, nameExistStr, name);
+            sprintf(msg,nameExistStr, name);
             write(clients[fromId]->fd, msg, strlen(msg));
             return 0;
         }
@@ -299,47 +335,110 @@ int handle_cmd(int id,int fd){
     int status;
     int cmdchildpid;
     char temp[1000];
-    int index_count_output;
-    int index_count;
     int real_do_num=0;
+    bool inputclientflag = false;
+    bool outputclientflag = false;
 
     int olcn = clients[id]->olcn;
     int cmd_count = clients[id]->cmd_counts;
 
+
     setenv("PATH", clients[id]->path, 1);
+
+
     /* check each commands */
-
-    for(int cmd_index=cmd_count; cmd_index<olcn+cmd_count; cmd_index++){
-        index_count_output = cmd_index + clients[id]->cmds[cmd_index].to_cmd;
-        index_count        = cmd_index ;
+    for(int cmd_index = cmd_count; cmd_index < olcn+cmd_count; cmd_index++){
         char * execvp_str[ clients[id]->cmds[cmd_index].para_len +1 ];
-        printf("\ncmd_index=%d,cmd:%s\n",cmd_index,clients[id]->cmds[cmd_index].evec_cmd_list[0]);
+        char msg[BUFFER_SIZE];
 
+        int to_client   = clients[id]->cmds[cmd_index].to_client;
+        int to_cmd      = clients[id]->cmds[cmd_index].to_cmd;
+        int from_client = clients[id]->cmds[cmd_index].from_client;
+        printf("from_client=%d\n",from_client);
+        char to_cmd_file[30]; strcpy(to_cmd_file, clients[id]->cmds[cmd_index].to_cmd_file);
+        int index_tocmd = cmd_index + to_cmd;
+
+
+        //default output to socket_fd
+        dup2(0, STDIN_FILENO);
+        dup2(1, STDOUT_FILENO);
+        dup2(clients[id]->fd, STDERR_FILENO);
+        //printf("clients[2]->cpf[4]=%s\n",clients[2]->cpf[4]?"true":"false");
         if(check_legal_cmd(clients[id]->cmds[cmd_index].evec_cmd_list[0]) ){//legad command
             printf("legal command:%s\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
+            //printf("start:id=%d\n",id);
 
-            //need output to ,so create a pipe
-            if( clients[id]->cmds[cmd_index].to_cmd > 0 &&clients[id]->cmd_pipe_flag[ index_count_output ] == 0 ){
-                clients[id]->cmd_pipe_flag[ index_count_output ] = 1;
-                clients[id]->cmd_pipe[index_count_output] = malloc(sizeof(int)*2);
-                if (pipe(clients[id]->cmd_pipe[index_count_output]) == -1){ // create pipe
+            //prepare output
+            printf("prepare output\n");
+            if(to_client > 0 ){
+            	//printf("prepare:clientflag[to_client]=%s\n",clientflag[to_client]?"true":"false");
+            	//printf("prepare:clients[to_client]->cpf[id]=%s\n",clients[to_client]->cpf[id]?"true":"false");
+            	if(!clientflag[to_client]){
+                    sprintf(msg, user_not_exist_str, to_client);//"*** Error: the pipe #%d->#%d does not exist yet. ***\n"
+                    write(clients[id]->fd, msg, strlen(msg) );
+                    outputclientflag = false;
+                    continue;
+                }
+                else if(clients[to_client]->cpf[id]){
+                    sprintf(msg, user_already_exist_str ,id,to_client);
+                    write(clients[id]->fd, msg, strlen(msg));
+                    outputclientflag = false;
+                    continue;
+                }
+                else{
+                    //printf("prepare:clients[to_client]exist and pipe not yet exist\n");
+                    outputclientflag = true;
+                    //printf("A:clients[2]->cpf[4]=%s\n",clients[2]->cpf[4]?"true":"false");
+                    clients[to_client]->cpf[id]=true;
+                    //printf("B:clients[2]->cpf[4]=%s\n",clients[2]->cpf[4]?"true":"false");
+                    clients[to_client]->cp[id]=malloc(sizeof(int)*2);
+                    //printf("prepare:pipe clients[%d]->cp[%d]\n",to_client,id);
+                    if(pipe(clients[to_client]->cp[id]) == -1 ){
+                        perror( "cmd pipe error");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+            else if( to_cmd > 0 && clients[id]->cmd_pipe_flag[ index_tocmd ] == 0 ){
+                clients[id]->cmd_pipe_flag[ index_tocmd ] = 1;
+                clients[id]->cmd_pipe[index_tocmd] = malloc(sizeof(int)*2);
+                if (pipe(clients[id]->cmd_pipe[index_tocmd]) == -1){ // create pipe
                     perror( "cmd pipe error");
                     exit(EXIT_FAILURE);
                 }
             }
-            if(clients[id]->cmds[cmd_index].to_client > -1 && clients[clients[id]->cmds[cmd_index].to_client]->cpf[id]==false){
-            	clients[clients[id]->cmds[cmd_index].to_client]->cpf[id]=true;
-            	clients[clients[id]->cmds[cmd_index].to_client]->cp[id]=malloc(sizeof(int)*2);
-            	if(pipe(clients[clients[id]->cmds[cmd_index].to_client]->cp[id]) == -1 ){
-            		perror( "cmd pipe error");
-                    exit(EXIT_FAILURE);
-            	}
+
+
+            //prepare input
+            printf("prepare input\n");
+            if(from_client >0){
+            	if(!clientflag[from_client]){
+            		//printf("from_client >-1\n,clientflag[from_client]=false\n");
+                    sprintf(msg, pipe_not_exist_str,from_client, id);
+                    write(clients[id]->fd, msg, strlen(msg) );
+                    inputclientflag = false;
+                    continue;
+                }
+                else if( !clients[id]->cpf[from_client] ){ 
+                    sprintf(msg, pipe_not_exist_str, from_client, id);//"*** Error: the pipe #%d->#%d does not exist yet. ***\n"
+                    //printf("clients[id]->cpf[from_client]=false,msg=%s\n",msg);
+                    write(clients[id]->fd, msg, strlen(msg));
+                    inputclientflag = false;
+                    continue;
+                }
+                else {
+                	close(clients[id]->cp[from_client][1]);
+                	inputclientflag = true;
+                }
             }
 
             if(strcmp(clients[id]->cmds[cmd_index].evec_cmd_list[0],"printenv")==0){
                 sprintf(temp, "%s=%s\n", clients[id]->cmds[cmd_index].evec_cmd_list[1],getenv(clients[id]->cmds[cmd_index].evec_cmd_list[1]));
-                if(strcmp(getenv(clients[id]->cmds[cmd_index].evec_cmd_list[1]),"bin")==0){
-                    sprintf(temp, "%s=%s:.\n", clients[id]->cmds[cmd_index].evec_cmd_list[1],getenv(clients[id]->cmds[cmd_index].evec_cmd_list[1]));
+                if(strcmp(getenv(clients[id]->cmds[cmd_index].evec_cmd_list[1]),"bin")==0 ){
+                    if(path_def_flag[id] == true){
+                        sprintf(temp, "%s=%s:.\n", clients[id]->cmds[cmd_index].evec_cmd_list[1], getenv(clients[id]->cmds[cmd_index].evec_cmd_list[1]));
+                        path_def_flag[id] = false;
+                    }
                 }
                 write(clients[id]->fd, temp, strlen(temp));
             }
@@ -357,120 +456,150 @@ int handle_cmd(int id,int fd){
     			cmdTell(id);
     		}
 			else if(strcmp(clients[id]->cmds[cmd_index].evec_cmd_list[0],"yell")==0){
-				char *msg = malloc(sizeof(char)*BUFFER_SIZE);
-				sscanf(clients[id]->inputBuffer, "yell %s",msg);
+
+                char *copymsg = malloc(sizeof(char)*BUFFER_SIZE);
+                strcpy(copymsg, clients[id]->inputBuffer);
+
+                char *temp = malloc(sizeof(char)*BUFFER_SIZE);
+                temp = strtok(copymsg," ");
+                temp = strtok(NULL,"\r\n");
+
+                char *msg = malloc(sizeof(char)*BUFFER_SIZE);
+                sprintf(msg, who_yell, clients[id]->name,temp);
+
 				cmdYell(msg,strlen(msg),id,true);
 			}
             else {
                 printf("other command\n");
+	            //printf("B_fork:outputclientflag=%s\n",outputclientflag?"true":"false");
+                //printf("B_fork:inputclientflag=%s\n",inputclientflag?"true":"false");
 
                 /* fork */
                 cmdchildpid=fork();
-
-                if(cmdchildpid<0){
-                    perror("fork error");
-                }
+                if(cmdchildpid<0) perror("fork error");
                 else if(cmdchildpid==0){//child process
-
-                	dup2(0, STDIN_FILENO);
-                	dup2(1, STDOUT_FILENO);
-
-                    /* set execvp_str */
+                    // set execvp_str
                     for(j=0; j<clients[id]->cmds[cmd_index].para_len; j++){
                         execvp_str[j]   = clients[id]->cmds[cmd_index].evec_cmd_list[j];
                     }
                     execvp_str[j] = NULL;
 
-
-                    if(strcmp(clients[id]->cmds[cmd_index].to_cmd_file, "\0") != 0){ // if find '>'
-                        FILE * f =fopen(clients[id]->cmds[cmd_index].to_cmd_file,"w");
+                    //output to file
+                    if(strcmp(to_cmd_file, "\0") != 0){
+                        FILE * f =fopen(to_cmd_file,"w");
                         f_d = fileno(f);
                     }
-                    /* set input */
-                    if(clients[id]->cmd_pipe_flag[index_count] == 1){//have data in pipe for this cmd
-                        printf("%s:someone output to this command \n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-                        if(dup2(clients[id]->cmd_pipe[index_count][0], STDIN_FILENO)==-1){
-                            perror("dup2 output error");
+
+                    // set input
+                    if(inputclientflag){
+                    	strcpy(msg,"\0");
+                    	sprintf(msg, reve_pipe_from, clients[id]->name, id, clients[from_client]->name, from_client, clients[id]->inputBuffer);
+                    	cmdYell(msg,strlen(msg),id,true);
+                    	//printf("prepare:inputclientflag=true,set input from %d\n",from_client);
+                        if(dup2(clients[id]->cp[from_client][0], STDIN_FILENO)==-1){
+                            perror("child:dup2 output error:from_clienta");
                         }
-                        close(clients[id]->cmd_pipe[index_count][1]);
+                        close(clients[id]->cp[from_client][1]);
                     }
-                    else{
-                    	for(int i=0;i<CLIENT_NUMBERS;i++){
-                			if(clients[id]->cpf[i] && id!=i){
-                				printf("client %d output to this command \n",i,clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-			                    if(dup2(clients[id]->cp[i][0], STDIN_FILENO)==-1){
-			                        perror("dup2 output error");
-			                    }
-			                    close(clients[id]->cp[i][1]);
-	                    	}
-            			}
+                    else if(clients[id]->cmd_pipe_flag[cmd_index] == 1){
+                        if(dup2(clients[id]->cmd_pipe[cmd_index][0], STDIN_FILENO)==-1){
+                            perror("child:dup2 output error:to cmd");
+                        }
+                        close(clients[id]->cmd_pipe[cmd_index][1]);
                     }
 
-
-                    /* set output to where */
-                    if(clients[id]->cmds[cmd_index].to_client>0){ // output to clients
-						printf("%s:cmds[cmd_index].to_client>0\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-                        dup2(clients[clients[id]->cmds[cmd_index].to_client]->cp[id][1], STDOUT_FILENO);
+                    // set output to where
+                    if(outputclientflag){ // output to clients
+                    	//printf("child:output to other client\n");
+                        sprintf(msg, publicPipeOutStr, clients[id]->name, id, clients[id]->inputBuffer,clients[to_client]->name,to_client);
+                        cmdYell(msg, strlen(msg), id, true);
+                        if(dup2(clients[to_client]->cp[id][1], STDOUT_FILENO)==-1){
+                            perror("child:dup2 output error:to_client");
+                        }
                     }
-                    else if( clients[id]->cmds[cmd_index].to_cmd>0 ){
-                        printf("%s:cmds[cmd_index].to_cmd>0\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-                        dup2(clients[id]->cmd_pipe[index_count_output][1], STDOUT_FILENO);
+                    else if( to_cmd >0 ){
+                        //printf("child:%s:cmds[cmd_index].to_cmd=%d\n",clients[id]->cmds[cmd_index].evec_cmd_list[0],index_tocmd);
+                        if(dup2(clients[id]->cmd_pipe[index_tocmd][1], STDOUT_FILENO)==-1){
+                            perror("child:dup2 output error:to_cmd");
+                        }
                     }
                     else if(f_d > 0){
-                        printf("cmd_index=%d,%s:f_d > 0\n",cmd_index,clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-                        dup2(f_d, STDOUT_FILENO);
+                        //printf("child:cmd_index=%d,%s:f_d > 0\n",cmd_index,clients[id]->cmds[cmd_index].evec_cmd_list[0]);
+                        if(dup2(f_d, STDOUT_FILENO)==-1){
+                            perror("child:dup2 output error:to f_d");
+                        }
                     }
                     else{
-                        printf("%s:printf to socket\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-                        dup2(clients[id]->fd, STDOUT_FILENO);
+                        //printf("child:%s:printf to socket\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
+                        if(dup2(clients[id]->fd, STDOUT_FILENO)==-1){
+                            perror("child:dup2 output error:to socket");
+                        }
                     }
 
-                    /* always print error to client */
+                    // always print error to client
                     dup2(clients[id]->fd, STDERR_FILENO);
 
-                    /* execvp */
+                    // exec cmd
                     if (execvp(execvp_str[0],execvp_str) <0 ){
                         perror("error on exec");
                         exit(0);
                     }
                 }
                 else{//parent process
-                    if(clients[id]->cmd_pipe_flag [index_count]==1 ){ //close used command
-                        close (clients[id]->cmd_pipe[index_count][0]);
-                        close (clients[id]->cmd_pipe[index_count][1]);
-                        clients[id]->cmd_pipe_flag [index_count]=0;
+                    if(clients[id]->cmd_pipe_flag [cmd_index]==1 ){ //close used command
+                        close (clients[id]->cmd_pipe[cmd_index][0]);
+                        close (clients[id]->cmd_pipe[cmd_index][1]);
                     }
+                    clients[id]->cmd_pipe_flag [cmd_index]=0;
+
+                    //printf("pare:id=%d\n",id);
+                    //printf("pare:to_client=%d\n",to_client);
+                    //printf("pare:from_client=%d\n",from_client);
+
+                    //printf("pare:waitpid\n");
                     waitpid(cmdchildpid, &status,0);
+                    //printf("pare:exit waitpid\n");
+
+                    if(inputclientflag){
+                    	printf("para:inputclientflag=true\n");
+                    	inputclientflag = false;
+                    	clients[id]->cpf[from_client] = false;
+                    	printf("pare:close 0\n");
+                    	close(clients[id]->cp[from_client][0]);
+                    	printf("pare:close 1\n");
+                    	close(clients[id]->cp[from_client][1]);
+                        printf("pare:flag set false\n");
+                    }
+                    if(outputclientflag){
+                    	//printf("para:outputclientflag=true\n");
+                    	outputclientflag = false;
+                    	//printf("pare:%s:cmds[cmd_index].to_client>0\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
+                        clients[to_client]->cpf[id]=true;
+                    }
                 }
             }
-            if(clients[id]->cmd_pipe_flag [index_count]==1 ){ //close used command
-                close (clients[id]->cmd_pipe[index_count][0]);
-                close (clients[id]->cmd_pipe[index_count][1]);
-                clients[id]->cmd_pipe_flag [index_count]=0;
-            }
+
             real_do_num++;
         }
         else{//illegad command
-            if(cmd_index == 0){
+            printf("illeged command \n");
+            if(cmd_index == cmd_count){
                 real_do_num++;
+                //printf("cmd_index=cmdcount\treal_do_num=%d\n",real_do_num);
             }
-            //illegal_flag = 0;
+
             sprintf(temp, "Unknown command: [%s].\n",clients[id]->cmds[cmd_index].evec_cmd_list[0]);
-            write(clients[id]->fd, temp, strlen(temp));//printf("temp=%s",temp);
+            write(clients[id]->fd, temp, strlen(temp));
 
-
-            if(cmd_index == 0){
-
-                if(clients[id]->cmd_pipe_flag [index_count]==1){ //close used command
-                    close (clients[id]->cmd_pipe[index_count][0]);
-                    close (clients[id]->cmd_pipe[index_count][1]);
-                }
+            if(cmd_index == cmd_count && clients[id]->cmd_pipe_flag [cmd_index]==1){
+                close (clients[id]->cmd_pipe[cmd_index][0]);
+                close (clients[id]->cmd_pipe[cmd_index][1]);
             }
 
             return(real_do_num);
         }
 
-        printf("cmd_index+cmd_count=%d,clients[id]->cmd_pipe_flag=%s\n",index_count,clients[id]->cmd_pipe_flag[index_count]?"true":"false" );
+        //printf("cmd_index+cmd_count=%d,clients[id]->cmd_pipe_flag=%s\n",cmd_index,clients[id]->cmd_pipe_flag[cmd_index]?"true":"false" );
     }
 
     return(real_do_num);
@@ -482,7 +611,7 @@ int main(int argc,char *argv[]){
     int nfds = 0;
     int id = -1;
     int fd;
-    char welcome_message[]="****************************************\n** Welcome to the information server. **\n****************************************\n";
+
     struct sockaddr_in cli_addr;
     fd_set rfds, afds;
 
@@ -496,38 +625,30 @@ int main(int argc,char *argv[]){
     nfds = msockfd + CLIENT_NUMBERS + 500;//getdtablesize();
     FD_ZERO(&afds);
     FD_SET(msockfd, &afds);
-    clientflag[msockfd]=true;
 
     //ready to receive client
     while(1){
-        //printf("while(1),memcpy\n");
+        //printf("memcpy afds rfds\n");
         memcpy(&rfds, &afds, sizeof(rfds));
 
-        //select
-        //printf("select\n");
         if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
             fprintf(stderr,"server: select error ");
             continue;
-            //exit(0);
         }
 
-        //printf("fd_isset\n");
         if(FD_ISSET(msockfd, &rfds)){//new client
+            //printf("new client enter\n");
             clilen = sizeof(cli_addr);
             newsockfd = accept(msockfd, (struct sockaddr*)&cli_addr,(socklen_t *) &clilen);//wait client connet to this server
 
             if(newsockfd < 0){
-                //fprintf(stderr, "Server:accept error\n");
                 printf("Server:accept error\n");
                 continue;
-                //exit(0);
             }
 
             if((id = GetNewClentId()) < 0){
-                //fprintf(stderr,"Server:too many client\n");
                 printf("Server:too many client\n");
                 continue;
-                //exit(0);
             }
 
             clientflag[id] = true;
@@ -543,31 +664,39 @@ int main(int argc,char *argv[]){
             //send welcome msg
             write(newsockfd,welcome_message,strlen(welcome_message));
             char msg[BUFFER_SIZE];
-            sprintf(msg, "*** User '(no name)' entered from %s/%s. ***\n",clients[id]->ip, clients[id]->port);
+
+            sprintf(msg, enter_str ,clients[id]->ip, clients[id]->port);
             write(newsockfd,msg,strlen(msg));
             write(newsockfd,"% ",strlen("% "));
             cmdYell(msg, strlen(msg), id, false);
         }
         else{//old client
-			for(int id=0; id<CLIENT_NUMBERS; id++){ //for all client
+			for(int id=1; id<CLIENT_NUMBERS; id++){ //for all client
             	if(clientflag[id]){
-            		fd = clients[id]->fd;//&& read(fd,c,sizeof(c)) != -1
+            		fd = clients[id]->fd;
 	            	if(fd!=msockfd && FD_ISSET(fd,&rfds) ){//not master and fd in rfds after select
-	                    printf("id=%d,fd=%d\n",id,fd);
 	                    strcpy(clients[id]->inputBuffer, "\0");
-
 	                    if(readline(fd, clients[id]->inputBuffer, sizeof(char)*MESSAGE_LEN )>1){
 	                        cut_inbuf(id);
 	                        if(strcmp(clients[id]->inputBuffer, "exit") == 0){
-	                            closeclient(id);
-	                            FD_CLR(fd, &afds);
-	                            printf("\n===id:%d===exit===\n",id);
-	                        }
+                                char msg[BUFFER_SIZE];
+                                sprintf(msg, exitStr, clients[id]->name);
+                                cmdYell(msg,strlen(msg),id,true);
+                                //shutdown(fd,2);
+                                closeclient(id);
+
+                                //write(fd,"\n",sizeof(char));
+                                //fflush(fd);
+                                //close(fd);
+                                clientflag[id]=false;
+                                FD_CLR(fd, &afds);
+                                printf("\n===id:%d===exit===\n",id);
+							}
 	                        else{
 	                        	ptfallcmd(id);
 		                        clients[id]->cmd_counts += handle_cmd(id,fd);
 
-		                        printf("cmd_count=%d,\nexit for_cmds\n",clients[id]->cmd_counts);
+		                        //printf("cmd_count=%d,\nexit for_cmds\n",clients[id]->cmd_counts);
 		                        write(fd,"% ",strlen("% "));
 	                        }
 	                    }
@@ -579,42 +708,3 @@ int main(int argc,char *argv[]){
     }
     return(0);
 }
-
-/*
-    	//memset(cmds,0,sizeof(cmds));
-
-                    //char * inputBuffer = malloc(sizeof(char)*BUFFER_SIZE);
-                    //strcpy(inputBuffer,"\0");
-        if(newsockfd<0) printf("server : accept error");
-        else{
-            clientchildpid=fork();
-            if(clientchildpid<0)  perror("fork error");
-            else if(clientchildpid==0){//child process
-                // child process serve accepted client
-
-
-                while(1){
-                    memset(cmds,0,sizeof(cmds));
-                    if(readline(newsockfd, inputBuffer, sizeof(inputBuffer))>1){
-
-                        total_com_num = cut_inbuf(inputBuffer,cmd_count);
-
-                        if(strcmp(inputBuffer, "exit") == 0){
-                            close(newsockfd);
-                            printf("\n===exit===\n");
-                            exit(0);
-                        }
-
-                        ptfallcmd(total_com_num);
-
-                        cmd_count += fork_cmds(newsockfd,total_com_num,cmd_count);
-                        printf("cmd_count=%d,\nexit for_cmds\n",cmd_count);
-                        write(newsockfd,"% ",strlen("% "));
-                    }
-                }
-            }
-            else { //parent
-                close(newsockfd);
-            }
-        }
-        */

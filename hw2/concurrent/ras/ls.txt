@@ -1,8 +1,6 @@
 baozi
 bin
 ls.txt
-temp.html
-temp2.html
-test.html
 test1.txt
 test2.txt
+test.html

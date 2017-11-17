@@ -118,12 +118,12 @@ login4
 3| % 
 4| *** GingerCookies (#3) just received from FruitBuffet (#2) by 'number <2' ***
 
-3 % ls >4
-1| *** GingerCookies (#3) just piped 'ls >4' to HotCakes (#4) ***
-2| *** GingerCookies (#3) just piped 'ls >4' to HotCakes (#4) ***
-3| *** GingerCookies (#3) just piped 'ls >4' to HotCakes (#4) ***
+3 % ls -S >4
+1| *** GingerCookies (#3) just piped 'ls -S >4' to HotCakes (#4) ***
+2| *** GingerCookies (#3) just piped 'ls -S >4' to HotCakes (#4) ***
+3| *** GingerCookies (#3) just piped 'ls -S >4' to HotCakes (#4) ***
 3| % 
-4| *** GingerCookies (#3) just piped 'ls >4' to HotCakes (#4) ***
+4| *** GingerCookies (#3) just piped 'ls -S >4' to HotCakes (#4) ***
 
 2 % number test.html >5
 2| *** Error: user #5 does not exist yet. ***
@@ -145,12 +145,12 @@ login4
 2| *** HotCakes (#4) just received from GingerCookies (#3) by 'number <3' ***
 3| *** HotCakes (#4) just received from GingerCookies (#3) by 'number <3' ***
 4| *** HotCakes (#4) just received from GingerCookies (#3) by 'number <3' ***
-4|    1 baozi
-4|    2 bin
-4|    3 ls.txt
+4|    1 bin
+4|    2 baozi
+4|    3 test2.txt
 4|    4 test.html
 4|    5 test1.txt
-4|    6 test2.txt
+4|    6 ls.txt
 4| % 
 
 4 % cat <3

@@ -41,13 +41,11 @@ login2
 1| % 
 
 1 % name user11
-1| *** User from CGILAB/511 is named 'user11'. ***
-1| % 
+1| % *** User from CGILAB/511 is named 'user11'. ***
 2| *** User from CGILAB/511 is named 'user11'. ***
 
 1 % name user111
-1| *** User from CGILAB/511 is named 'user111'. ***
-1| % 
+1| % *** User from CGILAB/511 is named 'user111'. ***
 2| *** User from CGILAB/511 is named 'user111'. ***
 
 login3
@@ -136,7 +134,7 @@ logout2
 3|    5 
 3| % 
 
-3 % ls -S | cat |3
+3 % ls | cat |3
 3| % 
 
 3 % noop
@@ -147,11 +145,6 @@ logout2
 3| % 
 
 3 % cat
-3| bin
-3| test2.txt
-3| test.html
-3| test1.txt
-3| ls.txt
 3| % 
 
 3 % number test.html > baozi

@@ -136,7 +136,7 @@ logout2
 3|    5 
 3| % 
 
-3 % ls -S | cat |3
+3 % ls | cat |3
 3| % 
 
 3 % noop
@@ -147,11 +147,6 @@ logout2
 3| % 
 
 3 % cat
-3| bin
-3| test2.txt
-3| test.html
-3| test1.txt
-3| ls.txt
 3| % 
 
 3 % number test.html > baozi

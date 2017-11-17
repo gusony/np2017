@@ -150,11 +150,11 @@ int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int 
 	int tmpPipe[2];
 
 	//create current pipe
-        if(pipes[pipePtr][0] < 0 &&  pipe(pipes[pipePtr]) < 0)
-        {
-                fprintf(stderr, "client: can't create pipe : %s\n", strerror(errno));
-                return -1;
-        }
+    if(pipes[pipePtr][0] < 0 &&  pipe(pipes[pipePtr]) < 0)
+    {
+            fprintf(stderr, "client: can't create pipe : %s\n", strerror(errno));
+            return -1;
+    }
 
 	//get bin files
 	if(getBinFile(binFile, binFileCount, binFileSize) < 0)
@@ -281,10 +281,10 @@ int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int 
 
 		//create temp pipe
 		if(pipe(tmpPipe) < 0)
-                {
-                        fprintf(stderr, "client: can't create temp pipe : %s\n", strerror(errno));
-                        return -1;
-                }
+        {
+                fprintf(stderr, "client: can't create temp pipe : %s\n", strerror(errno));
+                return -1;
+        }
 
 		semWait(semClient2);
 
@@ -469,13 +469,14 @@ void client_handler(int sockfd, int id)
 	printf("client%lu(%s/%s): commucation start\n", pid, cip + (id * IP_LENGTH), cport + (id * PORT_LENGTH));
 	char temp[BUFFER_SIZE];
 	sprintf(msg, loginStr, cname + (id * NAME_LENGTH), cip + (id * IP_LENGTH), cport + (id * PORT_LENGTH));
-	sprintf(temp, "%s%s%% ", welcomStr, msg);
+	sprintf(temp, "%s%s%", welcomStr, msg);
 	write(sockfd, temp, strlen(temp));
 	cmdYell(msg, strlen(msg), id, false);
 
 	while(1)
 	{
 		//get client command
+		write(sockfd, "% ", 2);
 		cmdLength = readline(sockfd, cmd, CMD_LENGTH);
 
 		if(cmdLength == 0)
@@ -540,7 +541,7 @@ void client_handler(int sockfd, int id)
 			//handle client command
 			if(command_handler(sockfd, cmd, id, pipes, pipePtr) < 0)
 				return;
-		write(sockfd, "% ", 2);
+
 	}
 }
 
@@ -677,7 +678,7 @@ int main(int argc, char *argv[], char ** envp){
 			close(sockfd);
 			initSHM();
 			closeOtherClient(newId);
-
+			//write(sockfd, "% ", 2);
 			client_handler(newsockfd, newId);
 			closeClientPublicFile(newId);
 			cflag[newId] = 0;
@@ -770,6 +771,7 @@ int cmdName(int fromId, char *name)
 	}
 	strcpy(cname + (fromId * NAME_LENGTH), name);
 	sprintf(msg, nameStr, cip + (fromId * IP_LENGTH), cport + (fromId * PORT_LENGTH), name);
+
 	cmdYell(msg, strlen(msg), fromId, true);
 }
 

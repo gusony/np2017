@@ -469,16 +469,18 @@ void client_handler(int sockfd, int id)
 	printf("client%lu(%s/%s): commucation start\n", pid, cip + (id * IP_LENGTH), cport + (id * PORT_LENGTH));
 	char temp[BUFFER_SIZE];
 	sprintf(msg, loginStr, cname + (id * NAME_LENGTH), cip + (id * IP_LENGTH), cport + (id * PORT_LENGTH));
-	sprintf(temp, "%s%s%", welcomStr, msg);
+	sprintf(temp, "%s%s", welcomStr, msg);
 	write(sockfd, temp, strlen(temp));
+	write(sockfd, "% ", strlen("% "));
 	cmdYell(msg, strlen(msg), id, false);
 
 	while(1)
 	{
 		//get client command
-		write(sockfd, "% ", 2);
+		//write(sockfd, "% ", strlen("% "));
+		printf("client_handler:readline\n");
 		cmdLength = readline(sockfd, cmd, CMD_LENGTH);
-
+		printf("client_handler:cmd=%s,\n",cmd);
 		if(cmdLength == 0)
 		{
 			printf("client%lu(%s/%s): user shutdown\n", pid, cip + (id * IP_LENGTH), cport + (id * PORT_LENGTH));
@@ -523,8 +525,10 @@ void client_handler(int sockfd, int id)
 			}
 		}
 		//client name
-		else if(startWith("name ", cmd))
+		else if(startWith("name ", cmd)){
+			printf("client_handler:cmdName\n");
 			cmdName(id, cmd + 5);
+		}
 		//client who
 		else if(startWith("who", cmd))
 			cmdWho(id);
@@ -541,7 +545,8 @@ void client_handler(int sockfd, int id)
 			//handle client command
 			if(command_handler(sockfd, cmd, id, pipes, pipePtr) < 0)
 				return;
-
+		printf("client_handler:% \n");
+		write(sockfd, "% ", 2);
 	}
 }
 
@@ -678,7 +683,6 @@ int main(int argc, char *argv[], char ** envp){
 			close(sockfd);
 			initSHM();
 			closeOtherClient(newId);
-			//write(sockfd, "% ", 2);
 			client_handler(newsockfd, newId);
 			closeClientPublicFile(newId);
 			cflag[newId] = 0;
@@ -698,8 +702,6 @@ int main(int argc, char *argv[], char ** envp){
 	close(sockfd);
 	return 0;
 }
-
-
 
 int cmdWho(int fromId)
 {
@@ -769,10 +771,12 @@ int cmdName(int fromId, char *name)
 			return 0;
 		}
 	}
+	//nameStr = "*** User from %s/%s is named '%s'. ***\n"
 	strcpy(cname + (fromId * NAME_LENGTH), name);
 	sprintf(msg, nameStr, cip + (fromId * IP_LENGTH), cport + (fromId * PORT_LENGTH), name);
-
+	printf("cmdNAME:%s,\n",msg);
 	cmdYell(msg, strlen(msg), fromId, true);
+
 }
 
 

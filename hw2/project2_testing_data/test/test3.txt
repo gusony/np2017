@@ -17,8 +17,8 @@ login4
 2:tell 3 Donut?
 3:tell 2 Sound good.
 4:tell 2 Don't eat me.
-4:yell ls > test1.html
-4:tell 6 ls > test1.html
+4:yell ls -S > test1.html
+4:tell 6 ls -S > test1.html
 logout2
 logout3
 logout4

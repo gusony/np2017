@@ -23,7 +23,7 @@ login3
 logout1
 logout2
 3:removetag0 test.html | number
-3:ls | cat |3
+3:ls -S | cat |3
 3:noop
 3:ccccc
 3:cat

@@ -14,7 +14,7 @@ login4
 2:cat test.html >3
 2:number <4
 3:number <2
-3:ls >4
+3:ls -S >4
 2:number test.html >5
 3:number <2
 4:removetag test.html >1

@@ -113,13 +113,13 @@ login4
 2| *** Donut told you ***: Don't eat me.
 4| % 
 
-4 % yell ls > test1.html
-2| *** Donut yelled ***: ls > test1.html
-3| *** Donut yelled ***: ls > test1.html
-4| *** Donut yelled ***: ls > test1.html
+4 % yell ls -S > test1.html
+2| *** Donut yelled ***: ls -S > test1.html
+3| *** Donut yelled ***: ls -S > test1.html
+4| *** Donut yelled ***: ls -S > test1.html
 4| % 
 
-4 % tell 6 ls > test1.html
+4 % tell 6 ls -S > test1.html
 4| *** Error: user #6 does not exist yet. ***
 4| % 
 

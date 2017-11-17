@@ -75,7 +75,7 @@ const char welcome_message[]        = "****************************************\
 const char enter_str[]              = "*** User '(no name)' entered from %s/%s. ***\n";
 const char exitStr[]                = "*** User '%s' left. ***\n";
 const char who_yell[]               = "*** %s yelled ***: %s\n";
-const char tellFailStr[]            = "*** Error: user #%s does not exist yet. ***\n";
+const char tellFailStr[]            = "*** Error: user #%d does not exist yet. ***\n";
 const char user_already_exist_str[] = "*** Error: the pipe #%d->#%d already exists. ***\n";
 const char pipe_not_exist_str[]     = "*** Error: the pipe #%d->#%d does not exist yet. ***\n";
 const char user_not_exist_str[]     = "*** Error: user #%d does not exist yet. ***\n";
@@ -296,7 +296,9 @@ void cmdTell(int fromId){
         write(clients[toId]->fd, msg, strlen(msg));
     }
     else{
-        sprintf(msg, tellFailStr, toIdc-2);
+    	printf("cmdWho:toId = %d\n",toId);
+    	printf("cmdWho:toIdc= %s\n",toIdc);
+        sprintf(msg, tellFailStr, toId);
         write(clients[fromId]->fd, msg, strlen(msg));
     }
 }
@@ -419,7 +421,7 @@ int handle_cmd(int id,int fd){
                     inputclientflag = false;
                     continue;
                 }
-                else if( !clients[id]->cpf[from_client] ){ 
+                else if( !clients[id]->cpf[from_client] ){
                     sprintf(msg, pipe_not_exist_str, from_client, id);//"*** Error: the pipe #%d->#%d does not exist yet. ***\n"
                     //printf("clients[id]->cpf[from_client]=false,msg=%s\n",msg);
                     write(clients[id]->fd, msg, strlen(msg));

@@ -61,14 +61,13 @@ char *cip;
 char *cport;
 char *cname;
 
-int cpid[CLIENT_NUMBERS];
-
 int cmdWho(int fromId);
 int cmdTell(int fromId, char *cmd);
 int cmdYell(const char *msg, int msgLength, int fromId, bool selfShow);
 int cmdName(int fromId, char *name);
 
-void initSEM(){
+void initSEM()
+{
 	if((semServer = semCreate(SEM_SERVER, 0)) < 0)
 		errexit("server: can't create server sem : %s\n", strerror(errno));
 	if((semServer2 = semCreate(SEM_SERVER2, 0)) < 0)
@@ -78,7 +77,9 @@ void initSEM(){
 	if((semClient2 = semCreate(SEM_CLIENT2, 1)) < 0)
 		errexit("server: can't create client sem : %s\n", strerror(errno));
 }
-void initSHM(){
+
+void initSHM()
+{
 	ctoscmd = (char*) shmat(getShmID(SHM_CLIENT_TO_SERVER_CMD, sizeof(char) * BUFFER_SIZE), NULL, 0);
 	ctospara = (char*) shmat(getShmID(SHM_CLIENT_TO_SERVER_PARA, sizeof(char) * BUFFER_SIZE), NULL, 0);
 	ctospara2 = (char*) shmat(getShmID(SHM_CLIENT_TO_SERVER_PARA2,sizeof(char) * BUFFER_SIZE), NULL, 0);
@@ -89,7 +90,9 @@ void initSHM(){
 	cport = (char*) shmat(getShmID(SHM_PORT_KEY, sizeof(char) * CLIENT_NUMBERS * PORT_LENGTH), NULL, 0);
 	cname = (char*) shmat(getShmID(SHM_NAME_KEY, sizeof(char) * CLIENT_NUMBERS * NAME_LENGTH), NULL, 0);
 }
-void initPublicFiles(){
+
+void initPublicFiles()
+{
 	for(int i=0;i<PUBLIC_PIPE_SIZE;++i)
 	{
 		for(int j=0;j<PUBLIC_PIPE_SIZE;++j)
@@ -105,13 +108,17 @@ void initPublicFiles(){
 		}
 	}
 }
-void closeOtherClient(int id){
+
+void closeOtherClient(int id)
+{
 	for(int i=0;i<CLIENT_NUMBERS;++i)
 		if(cfd[i] > 0 && i != id) {
 			while(close(cfd[i]) < 0);
 		}
 }
-void closeClientPublicFile(int id){
+
+void closeClientPublicFile(int id)
+{
 	printf("close public file %d\n", id);
 	for(int i=0;i<CLIENT_NUMBERS;++i)
 	{
@@ -124,7 +131,9 @@ void closeClientPublicFile(int id){
 		}
 	}
 }
-int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int &pipePtr){
+
+int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int &pipePtr)
+{
 	char buffer[BUFFER_SIZE];
 	int isPipe = 0, isErrorPipe = 0, isFilePipe = 0, isAllPipe = 0;
 	int pipeTo = 0, errorPipeTo = 0, allPipeTo = 0;
@@ -143,8 +152,8 @@ int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int 
 	//create current pipe
     if(pipes[pipePtr][0] < 0 &&  pipe(pipes[pipePtr]) < 0)
     {
-        fprintf(stderr, "client: can't create pipe : %s\n", strerror(errno));
-        return -1;
+            fprintf(stderr, "client: can't create pipe : %s\n", strerror(errno));
+            return -1;
     }
 
 	//get bin files
@@ -440,7 +449,9 @@ int command_handler(int sockfd, char *cmd, int id, int pipes[PIPE_SIZE][2], int 
 
 	return 0;
 }
-void client_handler(int sockfd, int id){
+
+void client_handler(int sockfd, int id)
+{
 	unsigned long pid = getpid();
 	char cmd[CMD_LENGTH];
 	int cmdLength;
@@ -467,7 +478,7 @@ void client_handler(int sockfd, int id){
 	{
 		//get client command
 		//write(sockfd, "% ", strlen("% "));
-		//printf("client_handler:readline\n");
+		printf("client_handler:readline\n");
 		cmdLength = readline(sockfd, cmd, CMD_LENGTH);
 		printf("client_handler:cmd=%s,\n",cmd);
 		if(cmdLength == 0)
@@ -538,7 +549,11 @@ void client_handler(int sockfd, int id){
 		write(sockfd, "% ", 2);
 	}
 }
-void reaper(int sig){
+
+int cpid[CLIENT_NUMBERS];
+
+void reaper(int sig)
+{
 	int status, pid;
 	bool checkOver = false;
 	while((pid = waitpid(-1, &status, WNOHANG)) >= 0 && !checkOver)
@@ -561,7 +576,10 @@ void reaper(int sig){
 		checkOver = true;
 	}
 }
-void mysig(int sig){
+
+
+void mysig(int sig)
+{
 	semWait(semServer);
 	if(!strcmp(ctoscmd, "yell"))
 	{
@@ -577,71 +595,7 @@ void mysig(int sig){
 	}
 	semSignal(semServer2);
 }
-int cmdWho(int fromId){
-	write(cfd[fromId], whoStr, strlen(whoStr));
-	for(int i=0; i<CLIENT_NUMBERS; ++i)
-	{
-		if(cfd[i] > 0)
-		{
-			sprintf(msg, whoFormatStr, i + 1, cname + (i * NAME_LENGTH), cip + (i * IP_LENGTH), cport + (i * PORT_LENGTH), (i == fromId?"\t<-me":""));
-			write(cfd[fromId], msg, strlen(msg));
-		}
-	}
-}
-int cmdTell(int fromId, char *cmd){
-	char toIdc[2];
-	sscanf(cmd, "%s", toIdc);
-	int toId = atoi(toIdc);
 
-	if(toId > 0 && toId <= CLIENT_NUMBERS && cfd[toId - 1] > 0)
-	{
-		if(strlen(cmd + strlen(toIdc) + 1) > 1024)
-			strcpy(&(cmd + strlen(toIdc) + 1)[1024], "\0");
-		sprintf(msg, tellStr, cname + (fromId * NAME_LENGTH), cmd + strlen(toIdc) + 1);
-		semWait(semClient);
-		strcpy(ctoscmd, "tell");
-		strcpy(ctospara, msg);
-		sprintf(ctospara2, "%d", toId - 1);
-		semSignal(semServer);
-		kill(spid, SIGUSR1);
-		semWait(semServer2);
-		semSignal(semClient);
-	}
-	else
-	{
-		sprintf(msg, userNotExistErrorStr, toIdc);
-		write(cfd[fromId], msg, strlen(msg));
-	}
-}
-int cmdYell(const char *msg, int msgLength, int fromId, bool selfShow){
-	semWait(semClient);
-	strcpy(ctoscmd, "yell");
-	if(msgLength > 1024)
-		sprintf(ctospara, "%1024s", msg);
-	else
-		sprintf(ctospara, "%s", msg);
-	sprintf(ctospara2, "%d", fromId);
-	sprintf(ctospara3, "%d", selfShow);
-	semSignal(semServer);
-	kill(spid, SIGUSR1);
-	semWait(semServer2);
-	semSignal(semClient);
-}
-int cmdName(int fromId, char *name){
-	if(strlen(name) > NAME_LENGTH) name[NAME_LENGTH] = '\0';
-	for(int i=0; i<CLIENT_NUMBERS; ++i)
-	{
-		if(!strcmp(cname + (i * NAME_LENGTH), name))
-		{
-			sprintf(msg, nameExistStr, name);
-			write(cfd[fromId], msg, strlen(msg));
-			return 0;
-		}
-	}
-	strcpy(cname + (fromId * NAME_LENGTH), name);
-	sprintf(msg, nameStr, cip + (fromId * IP_LENGTH), cport + (fromId * PORT_LENGTH), name);
-	cmdYell(msg, strlen(msg), fromId, true);
-}
 int main(int argc, char *argv[], char ** envp){
 	int sockfd, newsockfd, childpid;
 	struct sockaddr_in client_addr;
@@ -749,5 +703,80 @@ int main(int argc, char *argv[], char ** envp){
 	return 0;
 }
 
+int cmdWho(int fromId)
+{
+	write(cfd[fromId], whoStr, strlen(whoStr));
+	for(int i=0; i<CLIENT_NUMBERS; ++i)
+	{
+		if(cfd[i] > 0)
+		{
+			sprintf(msg, whoFormatStr, i + 1, cname + (i * NAME_LENGTH), cip + (i * IP_LENGTH), cport + (i * PORT_LENGTH), (i == fromId?"\t<-me":""));
+			write(cfd[fromId], msg, strlen(msg));
+		}
+	}
+}
+
+int cmdTell(int fromId, char *cmd)
+{
+	char toIdc[2];
+	sscanf(cmd, "%s", toIdc);
+	int toId = atoi(toIdc);
+
+	if(toId > 0 && toId <= CLIENT_NUMBERS && cfd[toId - 1] > 0)
+	{
+		if(strlen(cmd + strlen(toIdc) + 1) > 1024)
+			strcpy(&(cmd + strlen(toIdc) + 1)[1024], "\0");
+		sprintf(msg, tellStr, cname + (fromId * NAME_LENGTH), cmd + strlen(toIdc) + 1);
+		semWait(semClient);
+		strcpy(ctoscmd, "tell");
+		strcpy(ctospara, msg);
+		sprintf(ctospara2, "%d", toId - 1);
+		semSignal(semServer);
+		kill(spid, SIGUSR1);
+		semWait(semServer2);
+		semSignal(semClient);
+	}
+	else
+	{
+		sprintf(msg, userNotExistErrorStr, toIdc);
+		write(cfd[fromId], msg, strlen(msg));
+	}
+}
+
+int cmdYell(const char *msg, int msgLength, int fromId, bool selfShow)
+{
+	semWait(semClient);
+	strcpy(ctoscmd, "yell");
+	if(msgLength > 1024)
+		sprintf(ctospara, "%1024s", msg);
+	else
+		sprintf(ctospara, "%s", msg);
+	sprintf(ctospara2, "%d", fromId);
+	sprintf(ctospara3, "%d", selfShow);
+	semSignal(semServer);
+	kill(spid, SIGUSR1);
+	semWait(semServer2);
+	semSignal(semClient);
+}
+
+int cmdName(int fromId, char *name)
+{
+	if(strlen(name) > NAME_LENGTH) name[NAME_LENGTH] = '\0';
+	for(int i=0; i<CLIENT_NUMBERS; ++i)
+	{
+		if(!strcmp(cname + (i * NAME_LENGTH), name))
+		{
+			sprintf(msg, nameExistStr, name);
+			write(cfd[fromId], msg, strlen(msg));
+			return 0;
+		}
+	}
+	//nameStr = "*** User from %s/%s is named '%s'. ***\n"
+	strcpy(cname + (fromId * NAME_LENGTH), name);
+	sprintf(msg, nameStr, cip + (fromId * IP_LENGTH), cport + (fromId * PORT_LENGTH), name);
+	printf("cmdNAME:%s,\n",msg);
+	cmdYell(msg, strlen(msg), fromId, true);
+
+}
 
 

@@ -80,6 +80,22 @@ const char user_already_exist_str[] = "*** Error: the pipe #%d->#%d already exis
 const char pipe_not_exist_str[]     = "*** Error: the pipe #%d->#%d does not exist yet. ***\n";
 const char user_not_exist_str[]     = "*** Error: user #%d does not exist yet. ***\n";
 
+int findidbyname(char *name){
+    printf("findidbyname:%s\n",name);
+    for(int i=1; i<CLIENT_NUMBERS;i++){
+        printf("findidbyname:i=%d,name = %s\n",i,clients[i]->name);
+        if(strcmp(clients[i]->name, name)==0){
+            printf("---find---\n");
+            return(i);
+        }
+    }
+    return(0);
+    /*
+    0   : not found
+    1~N : id
+    */
+}
+
 //function
 void initallclient(void){
     for(int i=0; i<CLIENT_NUMBERS; i++){
@@ -272,9 +288,10 @@ void cmdWho(int id){
         write(clients[id]->fd, msg, strlen(msg));
     }
 }
-void cmdTell(int fromId){
-    int i;
+void cmdTell(int fromId,int cmd_index){
+    int i,toId=0;
     char copycmd[BUFFER_SIZE];
+
     strcpy(copycmd,clients[fromId]->inputBuffer);
     for(i=0;i<strlen(copycmd)-5;i++){
         copycmd[i]=copycmd[i+5];
@@ -287,19 +304,43 @@ void cmdTell(int fromId){
     strcpy(cmd, copycmd);
     char toIdc[2];
     char msg[BUFFER_SIZE];
+    char *toName=malloc(sizeof(char)*100);
+    strcpy(toName, clients[fromId]->cmds[cmd_index].evec_cmd_list[1]);//clients[id]->cmds[cmd_index].evec_cmd_list[0],"tell"
+    printf("1.toname = %s\n",toName);
+    toId =  findidbyname(toName);
+    printf("cmdTell:toId=%d\n",toId);
 
-
-    sscanf(cmd, "%s", toIdc);//cmd first string put in toIdc
-    int toId = atoi(toIdc);
-    if(toId > 0 && toId <= CLIENT_NUMBERS && clientflag[toId]){
-        sprintf(msg, tellStr, clients[fromId]->name, cmd+strlen(toIdc)+1);
-        write(clients[toId]->fd, msg, strlen(msg));
+    if(toId > 0){
+        printf("cmdTell:toid>0\n");
+        if(toId <= CLIENT_NUMBERS && clientflag[toId]){
+            printf("id=%d,name=%s\n",fromId,clients[fromId]->name);
+            printf("id=%d,name=%s\n",toId,clients[toId]->name);
+            printf("cmdTell:%s\n",clients[fromId]->name);
+            printf("cmdTell:%s\n",clients[fromId]->cmds[cmd_index].evec_cmd_list[2]);
+            //"*** %s told you ***: %s\n";
+            sprintf(msg, tellStr, clients[fromId]->name, clients[fromId]->cmds[cmd_index].evec_cmd_list[2]);
+            write(clients[toId]->fd, msg, strlen(msg));
+        }
+        else{
+            //printf("cmdWho:toId = %d\n",toId);
+            //printf("cmdWho:toIdc= %s\n",toIdc);
+            sprintf(msg, tellFailStr, toId);
+            write(clients[fromId]->fd, msg, strlen(msg));
+        }
     }
-    else{
-    	printf("cmdWho:toId = %d\n",toId);
-    	printf("cmdWho:toIdc= %s\n",toIdc);
-        sprintf(msg, tellFailStr, toId);
-        write(clients[fromId]->fd, msg, strlen(msg));
+    else {
+        sscanf(cmd, "%s", toIdc);//cmd first string put in toIdc
+        int toId = atoi(toIdc);
+        if(toId > 0 && toId <= CLIENT_NUMBERS && clientflag[toId]){
+            sprintf(msg, tellStr, clients[fromId]->name, cmd+strlen(toIdc)+1);
+            write(clients[toId]->fd, msg, strlen(msg));
+        }
+        else{
+        	printf("cmdWho:toId = %d\n",toId);
+        	printf("cmdWho:toIdc= %s\n",toIdc);
+            sprintf(msg, tellFailStr, toId);
+            write(clients[fromId]->fd, msg, strlen(msg));
+        }
     }
 }
 void cmdYell(const char *msg, int msgLength, int fromId, bool selfShow){
@@ -455,7 +496,7 @@ int handle_cmd(int id,int fd){
         		cmdName(id);
         	}
     		else if(strcmp(clients[id]->cmds[cmd_index].evec_cmd_list[0],"tell")==0){
-    			cmdTell(id);
+    			cmdTell(id,cmd_index);
     		}
 			else if(strcmp(clients[id]->cmds[cmd_index].evec_cmd_list[0],"yell")==0){
 

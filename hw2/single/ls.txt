@@ -1,0 +1,6 @@
+   1 bin
+   2 baozi
+   3 test2.txt
+   4 test.html
+   5 test1.txt
+   6 ls.txt

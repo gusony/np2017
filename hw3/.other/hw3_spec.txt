@@ -1,6 +1,6 @@
 Project III: Remote Batch System (rbs) in HTTP.
 
-In this homework, you are asked to write a remote batch system in HTTP.  
+In this homework, you are asked to write a remote batch system in HTTP.
 
 (1) Write a CGI program to receive an HTTP request described as follows.
 
@@ -15,15 +15,15 @@ In this homework, you are asked to write a remote batch system in HTTP.
 		h3=140.113.210.103      # the third server's IP.
 		p3=7001                 # the third server's port.
 		f3=batch_file3          # the batch file name redirected to the third rwg server.
-		h4=                     # no more server. 
-		h5=                     # no more server. 
+		h4=                     # no more server.
+		h5=                     # no more server.
 
 	Then, the CGI program connects to the three ras or rwg servers and then
-	redirects the batch file (stored in the HTTP server) as input to these servers.  
-	When receiving messages, send these messages back to the browser as the returning web page.  
-	Note that the returning web page includes several columns, 
-	one for displaying the returning messages from each server.  
-	A sample of the web page is given on the board. 
+	redirects the batch file (stored in the HTTP server) as input to these servers.
+	When receiving messages, send these messages back to the browser as the returning web page.
+	Note that the returning web page includes several columns,
+	one for displaying the returning messages from each server.
+	A sample of the web page is given on the board.
 
 			<html>
 			<head>
@@ -58,7 +58,7 @@ In this homework, you are asked to write a remote batch system in HTTP.
 			</body>
 			</html>
 
-	Requirements: 
+	Requirements:
 
 	* The number of target servers will not be greater than 5.
 
@@ -80,13 +80,13 @@ In this homework, you are asked to write a remote batch system in HTTP.
 
 
 
-(2) Write a simple http server in Unix to support CGI.  
+(2) Write a simple http server in Unix to support CGI.
 
 	Requirements:
 
-	* This must work with TA's CGI programs (samples will be posted) and the previous CGI you wrote. 
+	* This must work with TA's CGI programs (samples will be posted) and the previous CGI you wrote.
 
-	* Only parameters got from GET method should be processed. 
+	* Only parameters got from GET method should be processed.
 
 	* The file whose name ends with ".cgi" should be interpreted as an executable file and should be invoked.
 
@@ -101,7 +101,7 @@ In this homework, you are asked to write a remote batch system in HTTP.
 (3) http server + CGI in Windows
 
 	Requirements:
-	
+
 	* You are asked to implement a simple http server which only provides the remote batch service, that is, it is the combination of the 1st part and the 2nd part.
 
 	* This server must be implemented by winsock.
@@ -110,7 +110,7 @@ In this homework, you are asked to write a remote batch system in HTTP.
 
 	* The functionality of CGI must be as same as Part 1. (not include TA's CGI programs)
 
-	
+
 
 ==================================================================================================================================
 Due date: 2017/12/10 23:59

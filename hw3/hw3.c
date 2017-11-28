@@ -7,19 +7,67 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/uio.h>
+#include <sys/param.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
+#include <time.h>
 
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
 #define URL_LEN 2000
+#define BUF_LEN 10000
 
 char ip[5][HOST_LEN], port[5][PORT_FILE_LEN], file[5][PORT_FILE_LEN];
+FILE *fp[5];
+int write_count[5];
 
 
-
+/*int recv_msg(int from){ // read from server
+	char buf[3000];
+	int len;
+	if((len=readline(from,buf,sizeof(buf)-1)) <0)
+		return -1;
+	buf[len] = 0;
+	printf("%s",buf);	//echo input
+	fflush(stdout);
+	return len;
+}*/
+int readline(int fd, char *ptr, int maxlen){// read from file
+    int n=0,rc;
+    char c;
+    for(n=0; n<maxlen;n++){
+        if((rc=read(fd, &c, 1))==1){
+            if(c=='\n' || c=='\0' || c=='\r')
+                break;
+            *ptr++ = c;
+        }
+        else if (rc==0){
+            if(n==1) return(0);
+            else break;
+        }
+        else
+            return(-1);
+    }
+    *ptr = 0;
+    return(n);//string length
+}
+int readfile(FILE *fp,char *mes_buf){//return strlen
+	int len=0;
+	char c[1000];
+	strcpy(c,"");
+	fgets(c, sizeof(c), fp);
+	if(c)
+	strcpy(mes_buf, c);
+	printf("readfile:%s,\n",c);
+	len = strlen(c);
+	printf("readfile:len=%d,\n",len);
+	return(len);
+}
 int connect_to_server(int i){//return fd
 	struct hostent *he;
 	struct sockaddr_in client_sin;
 	int    client_fd;
+	int one = 1;
 
 	if(ip[i][0]=='\0'){
 		printf("ip[%d]=NULL",i);
@@ -34,7 +82,7 @@ int connect_to_server(int i){//return fd
 		return -1;
 	}
 
-	printf("start:%d<br>",i);
+
 	he=gethostbyname(ip[i]);
 	client_fd = socket(AF_INET,SOCK_STREAM,0);
 	bzero(&client_sin,sizeof(client_sin));
@@ -42,12 +90,16 @@ int connect_to_server(int i){//return fd
 	client_sin.sin_addr = *((struct in_addr *)he->h_addr);
 	client_sin.sin_port = htons((u_short)atoi(port[i]));
 	if(connect(client_fd,(struct sockaddr *)&client_sin,sizeof(client_sin)) == -1){
-		printf("connect error:id=%d<br>",i);
-		perror("");
-		exit(1);
+		printf("<script>document.all['m%d'].innerHTML += \"connect error<br>\";</script>",i);
 	}
-	printf("connect successful! client_fd=%d<br>", client_fd);
+	if (ioctl(client_fd, FIONBIO, (char *)&one))
+		printf("<script>document.all['m%d'].innerHTML += \"can't mark socket nonblocking<br>\";</script>",i);
+
 	return (client_fd);
+	/*
+	//printf("<script>document.all['m%d'].innerHTML += \"connect successful!<br>\";</script>",i);
+	//printf("connect successful! client_fd=%d<br>", client_fd);
+	*/
 }
 void gen_html(void){
 	printf("Content-Type: text/html\n\n");
@@ -82,6 +134,7 @@ void cut_url(char *buff){
 		strcpy(ip[i],"\0");
 		strcpy(port[i],"\0");
 		strcpy(file[i],"\0");
+		write_count[i]=0;
 	}
 
 	//cut by "&"
@@ -110,27 +163,94 @@ void cut_url(char *buff){
 			}
 		}
 	}
+	for(int i=0; i<5; i++)
+		printf("%s,%s,%s,\n",ip[i],port[i],file[i]);
+
 }
 int main(int argc, char* argv[],char *envp[]){
-	int Ssockfd[5];
-	FILE *fp[5];
+	fd_set rfds,afds; 
+	FD_ZERO(&afds);
 
-    char query[URL_LEN];
+	int nfds;
+	int Ssockfd[5]={0,0,0,0,0};
+	int len;
+	char mes_buf[BUF_LEN];
+	char query[URL_LEN];
     strcpy(query , getenv("QUERY_STRING") );
-    //printf("Content-Type: text/html\n\n");
-    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt&h2=nplinux1.cs.nctu.edu.tw&p2=7575&f2=t2.txt&h3=nplinux1.cs.nctu.edu.tw&p3=7575&f3=t3.txt&h4=nplinux1.cs.nctu.edu.tw&p4=7575&f4=t4.txt&h5=nplinux1.cs.nctu.edu.tw&p5=7575&f5=t5.txt");
+    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt&h2=nplinux1.cs.nctu.edu.tw&p2=7575&f2=t2.txt");
 
 	cut_url(query);
+
 	gen_html();
 	for(int i=0; i<5; i++){
-		// connect to server
-		Ssockfd[i] = connect_to_server(i);
+		Ssockfd[i] = connect_to_server(i);// connect to server
+		if(Ssockfd[i] > 0){
+			nfds=Ssockfd[i] +5 +500;
+			FD_SET(Ssockfd[i],&afds);
+		}
 
-		// open file
-		fp[i] = fopen(file[i], "r");
+		fp[i] = fopen(file[i], "r");// open file
 		if (fp[i] == NULL)
-			printf("Error : '%s' doesn't exist<br>", file[i]);
+			printf("<script>document.all['m%d'].innerHTML += \"Error : '%s' doesn't exist<br>\";</script>",i,file[i]);
+	}
+	time_t t_start = clock();
+	while(1){
+		if( (clock() - t_start)/CLOCKS_PER_SEC >300){
+			printf("close process\n");
+			exit(0);
+		}
 
+		memcpy(&rfds, &afds, sizeof(rfds));
+
+		if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
+            //printf("server: select error<br>");
+            continue;
+        }
+
+		for(int i=0; i<5; i++){
+			if(Ssockfd[i]>0 && FD_ISSET(Ssockfd[i], &rfds)){
+				strcpy(mes_buf,"");
+				if(readline(Ssockfd[i],mes_buf,BUF_LEN)){
+					printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>\n",i,mes_buf);
+					//printf("readline:%d,%s,n\n",i,mes_buf);
+					//fflush(stdout);
+				}
+
+				if(strstr(mes_buf, "% ")!=NULL){
+					strcpy(mes_buf,"");
+					len =readfile(fp[i],mes_buf);
+					printf("readfile:%d,%s,\n",i,mes_buf);
+					if(len <=0){
+						close(Ssockfd[i]);
+						Ssockfd[i] = 0;
+						strcpy(mes_buf,"");
+					}
+					else if( len>0){
+						write_count[i] += len;
+						write_count[i] -= write(Ssockfd[i], mes_buf,strlen(mes_buf));
+						printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>\n",i,mes_buf);
+						//fflush(stdout);
+						strcpy(mes_buf,"");
+					}
+				}
+			}
+		}
+		sleep(1);
+		/*for all client
+			// read line from server
+			// print to html
+
+			// send command
+			// read file
+			// write_count +=
+			// send to server
+			// write_count -=
+		*/
+		/*
+		len =readfile(fp[i],mes_buf);
+			if(len >0)
+				printf("%d,%d,%s\n",i,len,mes_buf);
+		 */
 	}
 
 

@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <time.h>
+#include <errno.h>
 
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
@@ -22,16 +23,6 @@ FILE *fp[5];
 int write_count[5];
 
 
-/*int recv_msg(int from){ // read from server
-	char buf[3000];
-	int len;
-	if((len=readline(from,buf,sizeof(buf)-1)) <0)
-		return -1;
-	buf[len] = 0;
-	printf("%s",buf);	//echo input
-	fflush(stdout);
-	return len;
-}*/
 int readline(int fd, char *ptr, int maxlen){// read from file
     int n=0,rc;
     char c;
@@ -54,13 +45,13 @@ int readline(int fd, char *ptr, int maxlen){// read from file
 int readfile(FILE *fp,char *mes_buf){//return strlen
 	int len=0;
 	char c[1000];
-	strcpy(c,"");
+	bzero(c, sizeof(c));
 	fgets(c, sizeof(c), fp);
-	if(c)
+	if(c[strlen(c)-1] == '\n')
+		c[strlen(c)-1] ='\0';
+
 	strcpy(mes_buf, c);
-	printf("readfile:%s,\n",c);
 	len = strlen(c);
-	printf("readfile:len=%d,\n",len);
 	return(len);
 }
 int connect_to_server(int i){//return fd
@@ -70,15 +61,15 @@ int connect_to_server(int i){//return fd
 	int one = 1;
 
 	if(ip[i][0]=='\0'){
-		printf("ip[%d]=NULL",i);
+		//printf("ip[%d]=NULL",i);
 		return -1;
 	}
 	if(port[i][0]=='\0'){
-		printf("port[%d]=NULL",i);
+		//printf("port[%d]=NULL",i);
 		return -1;
 	}
 	if(file[i][0]=='\0'){
-		printf("ip[%d]=NULL",i);
+		//printf("ip[%d]=NULL",i);
 		return -1;
 	}
 
@@ -96,34 +87,35 @@ int connect_to_server(int i){//return fd
 		printf("<script>document.all['m%d'].innerHTML += \"can't mark socket nonblocking<br>\";</script>",i);
 
 	return (client_fd);
-	/*
-	//printf("<script>document.all['m%d'].innerHTML += \"connect successful!<br>\";</script>",i);
-	//printf("connect successful! client_fd=%d<br>", client_fd);
-	*/
 }
 void gen_html(void){
-	printf("Content-Type: text/html\n\n");
-	printf("<html>");
-	printf("<head>");
-	printf("<meta http-equiv='Content-Type' content='text/html; charset=big5' />");
-	printf("<title>Network Programming Homework 3</title>");
-	printf("</head>");
-	printf("<body bgcolor=#336699>");
-	printf("<font face='Courier New' size=2 color=#FFFF99>");
-	printf("<table width='800' border='1'>");
-	printf("<tr>");
-	printf("<td>%s</td>",ip[0]);
-	printf("<td>%s</td>",ip[1]);
-	printf("<td>%s</td>",ip[2]);
-	printf("<td>%s</td>",ip[3]);
-	printf("<td>%s</td>",ip[4]);
-	printf("<tr>");
-	printf("<td valign='top' id='m0'></td>");
-	printf("<td valign='top' id='m1'></td>");
-	printf("<td valign='top' id='m2'></td>");
-	printf("<td valign='top' id='m3'></td>");
-	printf("<td valign='top' id='m4'></td>");
-	printf("</table>");
+	printf("HTTP/1.1 200 OK\r\n");
+	printf("Content-Type: text/html\r\n\r\n");
+	printf("<html>\n");
+	printf("<head>\n");
+	printf("<meta http-equiv='Content-Type' content='text/html; charset=big5' />\n");
+	printf("<title>Network Programming Homework 3</title>\n");
+	printf("</head>\n");
+	printf("<body bgcolor=#336699>\n");
+	printf("<font face='Courier New' size=2 color=#FFFF99>\n");
+	printf("<table width='800' border='1'>\n");
+	printf("<tr>\n");
+	printf("<td>%s</td>\n",ip[0]);
+	printf("<td>%s</td>\n",ip[1]);
+	printf("<td>%s</td>\n",ip[2]);
+	printf("<td>%s</td>\n",ip[3]);
+	printf("<td>%s</td>\n",ip[4]);
+	printf("<tr>\n");
+	printf("<td valign='top' id='m0'></td>\n");
+	printf("<td valign='top' id='m1'></td>\n");
+	printf("<td valign='top' id='m2'></td>\n");
+	printf("<td valign='top' id='m3'></td>\n");
+	printf("<td valign='top' id='m4'></td>\n");
+	printf("</table>\n");
+	printf("</font>\n");
+	printf("</body>\n");
+	printf("</html>\n");
+	fflush(stdout);
 }
 void cut_url(char *buff){
 	char temp[15][HOST_LEN];
@@ -131,9 +123,9 @@ void cut_url(char *buff){
 
 	//init all char array
 	for(i=0; i<5; i++){
-		strcpy(ip[i],"\0");
-		strcpy(port[i],"\0");
-		strcpy(file[i],"\0");
+		bzero(ip[i],  sizeof(ip[i]));
+		bzero(port[i],sizeof(port[i]));
+		bzero(file[i],sizeof(file[i]));
 		write_count[i]=0;
 	}
 
@@ -163,97 +155,102 @@ void cut_url(char *buff){
 			}
 		}
 	}
-	for(int i=0; i<5; i++)
-		printf("%s,%s,%s,\n",ip[i],port[i],file[i]);
-
 }
 int main(int argc, char* argv[],char *envp[]){
-	fd_set rfds,afds; 
+	fd_set rfds,afds;
 	FD_ZERO(&afds);
+	FD_ZERO(&rfds);
 
-	int nfds;
+	int host_num =0;
+	int nfds=10;
 	int Ssockfd[5]={0,0,0,0,0};
 	int len;
-	char mes_buf[BUF_LEN];
+	char *mes_buf=malloc(sizeof(char)*BUF_LEN);
+
 	char query[URL_LEN];
-    strcpy(query , getenv("QUERY_STRING") );
-    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt&h2=nplinux1.cs.nctu.edu.tw&p2=7575&f2=t2.txt");
+    //strcpy(query , getenv("QUERY_STRING") );
+    strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt");
 
 	cut_url(query);
-
 	gen_html();
+//return(0);
+
+
+	/*while(host_num){
+		bzero(mes_buf, sizeof(mes_buf));
+
+		len = readfile(fp[0],mes_buf);
+
+		if( len <= 0 ){
+			host_num--;
+			printf("len <=0\n");
+			return(0);
+		}
+		else if( len>0 ){
+			printf("<script>document.all['m%d'].innerHTML += \"%s%s<br>\";</script>\r\n",0,"% ",mes_buf);
+			fflush(stdout);
+		}
+		sleep(1);
+	}
+	return(0);*/
+
+
 	for(int i=0; i<5; i++){
 		Ssockfd[i] = connect_to_server(i);// connect to server
+		printf("Ssockfd[%d]=%d\n",i,Ssockfd[i]);
 		if(Ssockfd[i] > 0){
-			nfds=Ssockfd[i] +5 +500;
+			host_num++;
+			printf("host_num=%d\n",host_num);
+			nfds=Ssockfd[i]+1;
+			printf("nfds=%d\n",nfds);
 			FD_SET(Ssockfd[i],&afds);
+			fp[i] = fopen(file[i], "r");// open file
+			if (fp[i] == NULL)
+			    printf("<script>document.all['m%d'].innerHTML += \"Error : '%s' doesn't exist<br>\";</script>",i,file[i]);
 		}
-
-		fp[i] = fopen(file[i], "r");// open file
-		if (fp[i] == NULL)
-			printf("<script>document.all['m%d'].innerHTML += \"Error : '%s' doesn't exist<br>\";</script>",i,file[i]);
 	}
-	time_t t_start = clock();
-	while(1){
-		if( (clock() - t_start)/CLOCKS_PER_SEC >300){
-			printf("close process\n");
-			exit(0);
-		}
 
+	int test = 100;
+	while(test--){
+		fflush(stdout);
 		memcpy(&rfds, &afds, sizeof(rfds));
 
-		if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
-            //printf("server: select error<br>");
-            continue;
-        }
+		/*if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
+			printf("select error\n");
+            return(0);
+        }*/
 
 		for(int i=0; i<5; i++){
-			if(Ssockfd[i]>0 && FD_ISSET(Ssockfd[i], &rfds)){
-				strcpy(mes_buf,"");
-				if(readline(Ssockfd[i],mes_buf,BUF_LEN)){
-					printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>\n",i,mes_buf);
-					//printf("readline:%d,%s,n\n",i,mes_buf);
-					//fflush(stdout);
+			if(Ssockfd[i]>0 ){//&& FD_ISSET(Ssockfd[i], &rfds)
+				bzero(mes_buf, sizeof(mes_buf));
+
+				if(readline(Ssockfd[i],mes_buf,BUF_LEN-1)){
+					printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b><br/>\";</script>\r\n",i,mes_buf);
+					fflush(stdout);
 				}
 
 				if(strstr(mes_buf, "% ")!=NULL){
-					strcpy(mes_buf,"");
-					len =readfile(fp[i],mes_buf);
-					printf("readfile:%d,%s,\n",i,mes_buf);
-					if(len <=0){
+					bzero(mes_buf, sizeof(mes_buf));
+
+					len = readfile(fp[i],mes_buf);
+
+					printf("in main : len=%d,mes_buf=%s,\n",len,mes_buf);
+					if( len <= 0 ){
+						host_num--;
+						FD_CLR(Ssockfd[i],&rfds);
 						close(Ssockfd[i]);
 						Ssockfd[i] = 0;
-						strcpy(mes_buf,"");
 					}
-					else if( len>0){
+					else if( len>0 ){
+						printf("<script>document.all['m%d'].innerHTML += \"%s%s<br>\";</script>\r\n",i,"% ",mes_buf);
+						fflush(stdout);
 						write_count[i] += len;
 						write_count[i] -= write(Ssockfd[i], mes_buf,strlen(mes_buf));
-						printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>\n",i,mes_buf);
-						//fflush(stdout);
-						strcpy(mes_buf,"");
+						printf("write to Ssockfd[%d]=%d\n",i,Ssockfd[i]);
 					}
 				}
 			}
 		}
-		sleep(1);
-		/*for all client
-			// read line from server
-			// print to html
-
-			// send command
-			// read file
-			// write_count +=
-			// send to server
-			// write_count -=
-		*/
-		/*
-		len =readfile(fp[i],mes_buf);
-			if(len >0)
-				printf("%d,%d,%s\n",i,len,mes_buf);
-		 */
 	}
-
-
-
     return (0);
 }

@@ -47,8 +47,8 @@ int readfile(FILE *fp,char *mes_buf){//return strlen
 	char c[1000];
 	bzero(c, sizeof(c));
 	fgets(c, sizeof(c), fp);
-	if(c[strlen(c)-1] == '\n')
-		c[strlen(c)-1] ='\0';
+	//if(c[strlen(c)-1] == '\n')
+		//c[strlen(c)-1] ='\0';
 
 	strcpy(mes_buf, c);
 	len = strlen(c);
@@ -168,73 +168,55 @@ int main(int argc, char* argv[],char *envp[]){
 	char *mes_buf=malloc(sizeof(char)*BUF_LEN);
 
 	char query[URL_LEN];
-    //strcpy(query , getenv("QUERY_STRING") );
-    strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt");
+    strcpy(query , getenv("QUERY_STRING") );
+    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt");
 
 	cut_url(query);
 	gen_html();
-//return(0);
-
-
-	/*while(host_num){
-		bzero(mes_buf, sizeof(mes_buf));
-
-		len = readfile(fp[0],mes_buf);
-
-		if( len <= 0 ){
-			host_num--;
-			printf("len <=0\n");
-			return(0);
-		}
-		else if( len>0 ){
-			printf("<script>document.all['m%d'].innerHTML += \"%s%s<br>\";</script>\r\n",0,"% ",mes_buf);
-			fflush(stdout);
-		}
-		sleep(1);
-	}
-	return(0);*/
-
 
 	for(int i=0; i<5; i++){
 		Ssockfd[i] = connect_to_server(i);// connect to server
-		printf("Ssockfd[%d]=%d\n",i,Ssockfd[i]);
+		//printf("Ssockfd[%d]=%d\n",i,Ssockfd[i]);
 		if(Ssockfd[i] > 0){
 			host_num++;
-			printf("host_num=%d\n",host_num);
+			//printf("host_num=%d\n",host_num);
 			nfds=Ssockfd[i]+1;
-			printf("nfds=%d\n",nfds);
+			//printf("nfds=%d\n",nfds);
 			FD_SET(Ssockfd[i],&afds);
+
 			fp[i] = fopen(file[i], "r");// open file
 			if (fp[i] == NULL)
 			    printf("<script>document.all['m%d'].innerHTML += \"Error : '%s' doesn't exist<br>\";</script>",i,file[i]);
 		}
 	}
 
+
 	int test = 100;
-	while(test--){
+	while(host_num){
 		fflush(stdout);
 		memcpy(&rfds, &afds, sizeof(rfds));
 
-		/*if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
+		if(select(nfds, &rfds, (fd_set*)0, (fd_set*)0, (struct timeval*)0) < 0){
 			printf("select error\n");
             return(0);
-        }*/
+        }
 
 		for(int i=0; i<5; i++){
-			if(Ssockfd[i]>0 ){//&& FD_ISSET(Ssockfd[i], &rfds)
-				bzero(mes_buf, sizeof(mes_buf));
+			if(Ssockfd[i]>0 && FD_ISSET(Ssockfd[i], &rfds) ){//
+				bzero(mes_buf, BUF_LEN);
 
 				if(readline(Ssockfd[i],mes_buf,BUF_LEN-1)){
+					printf("read from=%d,%s,<br>",i,mes_buf);
 					printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b><br/>\";</script>\r\n",i,mes_buf);
 					fflush(stdout);
 				}
 
 				if(strstr(mes_buf, "% ")!=NULL){
-					bzero(mes_buf, sizeof(mes_buf));
+					bzero(mes_buf, BUF_LEN);
 
 					len = readfile(fp[i],mes_buf);
 
-					printf("in main : len=%d,mes_buf=%s,\n",len,mes_buf);
+					printf("in main : len=%d,mes_buf=%s,<br>",len,mes_buf);
 					if( len <= 0 ){
 						host_num--;
 						FD_CLR(Ssockfd[i],&rfds);
@@ -242,13 +224,16 @@ int main(int argc, char* argv[],char *envp[]){
 						Ssockfd[i] = 0;
 					}
 					else if( len>0 ){
-						printf("<script>document.all['m%d'].innerHTML += \"%s%s<br>\";</script>\r\n",i,"% ",mes_buf);
+						printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>",i,mes_buf);
 						fflush(stdout);
 						write_count[i] += len;
+						printf("write_count[%d]=%d<br>",i,write_count[i]);
 						write_count[i] -= write(Ssockfd[i], mes_buf,strlen(mes_buf));
-						printf("write to Ssockfd[%d]=%d\n",i,Ssockfd[i]);
+						printf("write_count[%d]=%d<br>",i,write_count[i]);
+						printf("write to Ssockfd[%d]=%d,%s,<br>",i,Ssockfd[i],mes_buf);
 					}
 				}
+
 			}
 		}
 	}

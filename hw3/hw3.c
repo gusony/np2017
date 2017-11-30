@@ -22,7 +22,52 @@ char ip[5][HOST_LEN], port[5][PORT_FILE_LEN], file[5][PORT_FILE_LEN];
 FILE *fp[5];
 int write_count[5];
 
+char *replaceltgt(char *mes_buf){
+	char *cp = malloc(sizeof(char)*BUF_LEN);
+	strcpy(cp,mes_buf);
 
+	char *result = malloc(sizeof(char)*BUF_LEN);
+	bzero(result,sizeof(char)*BUF_LEN);
+	char *t1 = malloc(sizeof(char)*1000);
+	char *t2 = malloc(sizeof(char)*1000);
+
+	strcpy(result, mes_buf);
+
+	while(strstr(cp, "<")!=NULL){//find '<'
+		if(cp[0] !='<'){
+			t1 = strtok(cp,"<");
+		    t2 = strtok(NULL,"<");
+		    if(t1 != NULL){
+	    		strcpy(result,t1);
+	    	}
+		}
+		else {
+			t2 = strtok(cp,"<");
+		}
+
+    	strcat(result, "&lt;");
+
+    	if(t2 != NULL){
+			strcat(result,t2);
+		}
+		strcpy(cp,result);
+    }
+
+    while(strstr(cp, ">")!=NULL){
+    	t1 = strtok(cp,">");
+	    t2 = strtok(NULL,">");
+
+	    if(t1 != NULL && t1[0] ){
+	    	strcpy(result,t1);
+    	}
+    	strcat(result, "&gt;");
+    	if(t2 != NULL){
+			strcat(result,t2);
+		}
+		strcpy(cp,result);
+    }
+    return(result);
+}
 int readline(int fd, char *ptr, int maxlen){// read from file
     int n=0,rc;
     char c;
@@ -191,7 +236,6 @@ int main(int argc, char* argv[],char *envp[]){
 	}
 
 
-	int test = 100;
 	while(host_num){
 		fflush(stdout);
 		memcpy(&rfds, &afds, sizeof(rfds));
@@ -204,33 +248,49 @@ int main(int argc, char* argv[],char *envp[]){
 		for(int i=0; i<5; i++){
 			if(Ssockfd[i]>0 && FD_ISSET(Ssockfd[i], &rfds) ){//
 				bzero(mes_buf, BUF_LEN);
-
+				printf("read from server<br>");
 				if(readline(Ssockfd[i],mes_buf,BUF_LEN-1)){
-					printf("read from=%d,%s,<br>",i,mes_buf);
-					printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b><br/>\";</script>\r\n",i,mes_buf);
+					strcpy(mes_buf,replaceltgt(mes_buf));
+					printf("read from=%d,%d,%s,<br>",i,strlen(mes_buf),mes_buf);
+					if(strstr(mes_buf, "% ")==NULL){
+						strcat(mes_buf,"<br>");
+					}
+
+					printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b>\";</script>\r\n",i,mes_buf);
 					fflush(stdout);
 				}
 
-				if(strstr(mes_buf, "% ")!=NULL){
+				if(strstr(mes_buf, "% ")!=NULL ){
 					bzero(mes_buf, BUF_LEN);
 
 					len = readfile(fp[i],mes_buf);
 
-					printf("in main : len=%d,mes_buf=%s,<br>",len,mes_buf);
-					if( len <= 0 ){
+					printf("in main : len=%d,mes_buf=%s,%d,<br>",len,mes_buf,mes_buf[strlen(mes_buf)-1]);
+					if( len <= 0 ){//or read exit
+						printf("host_num--<br>");
 						host_num--;
 						FD_CLR(Ssockfd[i],&rfds);
 						close(Ssockfd[i]);
 						Ssockfd[i] = 0;
 					}
 					else if( len>0 ){
-						printf("<script>document.all['m%d'].innerHTML += \"%s<br>\";</script>",i,mes_buf);
-						fflush(stdout);
+						//write to server
 						write_count[i] += len;
 						printf("write_count[%d]=%d<br>",i,write_count[i]);
 						write_count[i] -= write(Ssockfd[i], mes_buf,strlen(mes_buf));
 						printf("write_count[%d]=%d<br>",i,write_count[i]);
 						printf("write to Ssockfd[%d]=%d,%s,<br>",i,Ssockfd[i],mes_buf);
+						//print to html
+						mes_buf[strlen(mes_buf)-1] = '\0';
+						printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b><br>\";</script>",i,mes_buf);
+						fflush(stdout);
+					}
+					if(strstr(mes_buf, "exit")!=NULL){
+						printf("host_num--<br>");
+						host_num--;
+						FD_CLR(Ssockfd[i],&rfds);
+						close(Ssockfd[i]);
+						Ssockfd[i] = 0;
 					}
 				}
 

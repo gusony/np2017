@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
@@ -47,9 +48,10 @@ void replace_special_char(char *mes_buf){
 int readline(int fd, char *ptr, int maxlen){// read from file
     int n=0,rc;
     char c;
+    printf("<br>");
     for(n=0; n<maxlen;n++){
+    	printf("n=%4d,c=%1c,clock=%lld<br>",n,c,clock());
         if((rc=read(fd, &c, 1))==1){
-            //if(c=='\n' || c=='\0' || c=='\r')
             if(c=='\0')
                 break;
             *ptr++ = c;
@@ -69,8 +71,6 @@ int readfile(FILE *fp,char *mes_buf){//return strlen
 	char c[1000];
 	bzero(c, sizeof(c));
 	fgets(c, sizeof(c), fp);
-	//if(c[strlen(c)-1] == '\n')
-		//c[strlen(c)-1] ='\0';
 
 	strcpy(mes_buf, c);
 	len = strlen(c);
@@ -82,18 +82,8 @@ int connect_to_server(int i){//return fd
 	int    client_fd;
 	int one = 1;
 
-	if(ip[i][0]=='\0'){
-		//printf("ip[%d]=NULL",i);
+	if(ip[i][0]=='\0' || port[i][0]=='\0' || file[i][0]=='\0')
 		return -1;
-	}
-	if(port[i][0]=='\0'){
-		//printf("port[%d]=NULL",i);
-		return -1;
-	}
-	if(file[i][0]=='\0'){
-		//printf("ip[%d]=NULL",i);
-		return -1;
-	}
 
 
 	he=gethostbyname(ip[i]);
@@ -105,9 +95,13 @@ int connect_to_server(int i){//return fd
 	if(connect(client_fd,(struct sockaddr *)&client_sin,sizeof(client_sin)) == -1){
 		printf("<script>document.all['m%d'].innerHTML += \"connect error<br>\";</script>",i);
 	}
-	if (ioctl(client_fd, FIONBIO, (char *)&one))
-		printf("<script>document.all['m%d'].innerHTML += \"can't mark socket nonblocking<br>\";</script>",i);
 
+	int flag = fcntl(client_fd, F_GETFL, 0);
+	fcntl(client_fd, F_SETFL, flag | O_NONBLOCK);
+
+	/*if (ioctl(client_fd, FIONBIO, (char *)&one))
+		printf("<script>document.all['m%d'].innerHTML += \"can't mark socket nonblocking<br>\";</script>",i);
+	*/
 	return (client_fd);
 }
 void gen_html(void){
@@ -221,6 +215,7 @@ int main(int argc, char* argv[],char *envp[]){
         }
 
 		for(int i=0; i<5; i++){
+			//printf("i=%d<br>",i);
 			if(Ssockfd[i]>0 && FD_ISSET(Ssockfd[i], &rfds) ){
 				bzero(mes_buf, BUF_LEN);
 
@@ -244,15 +239,13 @@ int main(int argc, char* argv[],char *envp[]){
 						write_count[i] -= write(Ssockfd[i], mes_buf,strlen(mes_buf));
 						replace_special_char(mes_buf);
 
-						if(i==0)
-							printf(",%s,<br>",mes_buf);
-						//printf to html
 
+						//printf to html
 						printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b>\";</script>",i,mes_buf);
 						fflush(stdout);
 
 						if(strstr(mes_buf, "exit")!=NULL){
-							printf("find exit,%d,host_num--<br>",i);
+							//printf("find exit,%d,host_num--<br>",i);
 							host_num--;
 							FD_CLR(Ssockfd[i],&afds);
 							close(Ssockfd[i]);
@@ -260,19 +253,12 @@ int main(int argc, char* argv[],char *envp[]){
 						}
 					}
 					else if( len <= 0 ){//or read exit
-						printf("%d,host_num--<br>",i);
+						//printf("%d,host_num--<br>",i);
 						host_num--;
 						FD_CLR(Ssockfd[i],&afds);
 						close(Ssockfd[i]);
 						Ssockfd[i] = 0;
 					}
-
-					/*if(strstr(mes_buf, "exit")!=NULL){
-						host_num--;
-						FD_CLR(Ssockfd[i],&rfds);
-						close(Ssockfd[i]);
-						Ssockfd[i] = 0;
-					}*/
 				}
 			}
 		}

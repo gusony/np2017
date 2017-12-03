@@ -24,13 +24,13 @@ int contain_prompt ( char* line )
     }
   }
   return 0;
-} 
+}
 
 int recv_msg(int userno,int from)
 {
   char buf[3000],*tmp;
   int len,i;
-  
+
   len=read(from,buf,sizeof(buf)-1);
   if(len < 0) return -1;
 
@@ -43,7 +43,7 @@ int recv_msg(int userno,int from)
       printf("%d| %s\n",userno,tmp);  // echo input
     }
   }
-  fflush(stdout); 
+  fflush(stdout);
   return len;
 }
 
@@ -68,7 +68,7 @@ int readline(int fd,char *ptr,int maxlen)
     else return(-1);
   }
   return n;
-}      
+}
 
 
 int main(int argc,char *argv[])
@@ -79,9 +79,9 @@ int main(int argc,char *argv[])
   int                 client_fd[MAXUSER];
   struct sockaddr_in  client_sin;
   struct hostent      *he;
-  FILE                *fd; 
+  FILE                *fd;
 
-  
+
   // handle args
   if(argc == 3)
     fd = stdin;
@@ -90,35 +90,35 @@ int main(int argc,char *argv[])
   else {
     fprintf(stderr, "Usage : client <server ip> <port> <testfile>\n");
     exit(1);
-  }    
+  }
   if((he=gethostbyname(argv[1])) == NULL) {
     fprintf(stderr, "Usage : client <server ip> <port> <testfile>\n");
     exit(1);
   }
   SERVER_PORT = atoi(argv[2]);
-  
+
   // handle socket
   for(i=0; i<MAXUSER; i++) client_fd[i] = socket(AF_INET,SOCK_STREAM,0);
-  memset(&client_sin, 0, sizeof(client_sin)); 
+  memset(&client_sin, 0, sizeof(client_sin));
   client_sin.sin_family = AF_INET;
-  client_sin.sin_addr = *((struct in_addr *)he->h_addr); 
+  client_sin.sin_addr = *((struct in_addr *)he->h_addr);
   client_sin.sin_port = htons(SERVER_PORT);
-  
+
   // handle fds
   FD_ZERO(&rfds);
   FD_ZERO(&afds);
-  FD_SET(fileno(fd),&afds); 
-  
+  FD_SET(fileno(fd),&afds);
+
   unsend = 0;
   memset (write_enable, 0, sizeof(write_enable));
 
   while(1)
-  { 
+  {
     // receive message from server
     memcpy(&rfds, &afds, sizeof(fd_set));
     if(select(MAXUSER+5,&rfds,NULL,NULL,NULL) < 0) return 0;
     for(i=0; i<MAXUSER; i++)
-    {  
+    {
       if(FD_ISSET(client_fd[i], &rfds))
       {
         if(recv_msg(i, client_fd[i]) < 0)
@@ -138,14 +138,14 @@ int main(int argc,char *argv[])
         msg_buf[len] = 0;
         fflush(stdout);
       }
+
       unsend = 0;
-      if(!strncmp(msg_buf, "exit",4))  // exit all
-      {
+      if(!strncmp(msg_buf, "exit",4)){  // exit all
         printf("\n%s", msg_buf);
-        
+
         //waiting for server messages
-        sleep(2); 
-        
+        sleep(2);
+
         for(i=0; i<MAXUSER; i++)
         {
           if (FD_ISSET(client_fd[i],&afds))//modify by sapp
@@ -163,7 +163,7 @@ int main(int argc,char *argv[])
       else if(!strncmp(msg_buf,"login",5)) { // login
         printf("\n%s", msg_buf);
         sscanf(msg_buf, "login%d", &i);
-        
+
         if(i<MAXUSER && i>=0) {
           if(connect(client_fd[i],(struct sockaddr *)&client_sin,sizeof(client_sin)) == -1) {
             printf("connect fail\n");
@@ -171,15 +171,14 @@ int main(int argc,char *argv[])
           else FD_SET(client_fd[i], &afds);
         }
       }
-      else if (!strncmp(msg_buf,"logout",6)) // logout
-      {
+      else if (!strncmp(msg_buf,"logout",6)){ // logout
         sscanf(msg_buf, "logout%d", &i);
-        
+
         if ( write_enable[i] ) {
           printf("\n%s",msg_buf);
-          
+
           if(i<MAXUSER && i>=0) {
-            
+
             if(FD_ISSET(client_fd[i], &afds)) {
               if(write(client_fd[i], EXIT_STR,6) == -1) return -1;
               while(recv_msg(i,client_fd[i]) > 0);
@@ -187,21 +186,20 @@ int main(int argc,char *argv[])
               FD_CLR(client_fd[i],&rfds);
               close(client_fd[i]);
               client_fd[i] = socket(AF_INET,SOCK_STREAM,0);
-            } 
+            }
             else {
               // printf ( "pass logout(fd) %s\n", msg_buf ) ;
               unsend = 1 ;
             }
-            
+
           }
-        } 
+        }
         else {
           // printf ( "pass logout(we) %s\n", msg_buf ) ;
           unsend = 1;
         }
-      }  
-      else  // send command
-      {
+      }
+      else{  // send command
         char tmpArr[20];
         sscanf(msg_buf, "%d", &i);
         sprintf(tmpArr, "%d", i);
@@ -212,15 +210,15 @@ int main(int argc,char *argv[])
           if(i<MAXUSER){
             //write(client_fd[i],msg_buf1,len-1,0);
             write(client_fd[i], msg_buf1, strlen(msg_buf1));
-            write_enable[i] = 0; 
+            write_enable[i] = 0;
           }
         } else {
           unsend = 1 ;
         }
       }
-      usleep(300000); //sleep 1 sec before next commandlready at oldest change 
+      usleep(300000); //sleep 1 sec before next commandlready at oldest change
     }
   } // end of while
-  
+
   return 0;
 }  // end of main

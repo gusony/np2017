@@ -1,12 +1,33 @@
+#undef UNICODE
+
+#define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
 #include <list>
 using namespace std;
 
 #include "resource.h"
+#include <winsock2.h>
+#include <stdio.h>
+#include <conio.h>
+#include <stdlib.h>
+#include <ws2tcpip.h>
+
+#pragma comment (lib, "Ws2_32.lib")
 
 #define SERVER_PORT 7799
-
+#define DATA_BUFSIZE 8192
 #define WM_SOCKET_NOTIFY (WM_USER + 1)
+
+typedef struct _SOCKET_INFORMATION {
+	BOOL RecvPosted;
+	CHAR Buffer[DATA_BUFSIZE];
+	WSABUF DataBuf;
+	SOCKET Socket;
+	DWORD BytesSEND;
+	DWORD BytesRECV;
+	struct _SOCKET_INFORMATION *Next;
+} SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
 BOOL CALLBACK MainDlgProc(HWND, UINT, WPARAM, LPARAM);
 int EditPrintf (HWND, TCHAR *, ...);
@@ -29,6 +50,11 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	static HWND hwndEdit;
 	static SOCKET msock, ssock;
 	static struct sockaddr_in sa;
+	SOCKET Accept;
+	LPSOCKET_INFORMATION SocketInfo;
+	DWORD RecvBytes;
+	DWORD SendBytes;
+	DWORD Flags;
 
 	int err;
 
@@ -108,12 +134,73 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 					EditPrintf(hwndEdit, TEXT("=== Accept one new client(%d), List size:%d ===\r\n"), ssock, Socks.size());
 					break;
 				case FD_READ:
-				//Write your code for read event here.
-					
+					//Write your code for read event here.
+					SocketInfo = GetSocketInformation(wParam);
+					// Read data only if the receive buffer is empty
+					if (SocketInfo->BytesRECV != 0)
+					{
+						SocketInfo->RecvPosted = TRUE;
+						return 0;
+					}
+					else
+					{
+						SocketInfo->DataBuf.buf = SocketInfo->Buffer;
+						SocketInfo->DataBuf.len = DATA_BUFSIZE;
+
+						Flags = 0;
+						if (WSARecv(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, &RecvBytes,
+							&Flags, NULL, NULL) == SOCKET_ERROR)
+						{
+							if (WSAGetLastError() != WSAEWOULDBLOCK)
+							{
+								printf("WSARecv() failed with error %d\n", WSAGetLastError());
+								FreeSocketInformation(wParam);
+								return 0;
+							}
+						}
+						else // No error so update the byte count
+						{
+							printf("WSARecv() is OK!\n");
+							SocketInfo->BytesRECV = RecvBytes;
+						}
+					}
 					break;
 				case FD_WRITE:
-				//Write your code for write event here
+					//Write your code for write event here
+					SocketInfo = GetSocketInformation(wParam);
+					if (SocketInfo->BytesRECV > SocketInfo->BytesSEND)
+					{
+						SocketInfo->DataBuf.buf = SocketInfo->Buffer + SocketInfo->BytesSEND;
+						SocketInfo->DataBuf.len = SocketInfo->BytesRECV - SocketInfo->BytesSEND;
 
+						if (WSASend(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, &SendBytes, 0,
+							NULL, NULL) == SOCKET_ERROR)
+						{
+							if (WSAGetLastError() != WSAEWOULDBLOCK)
+							{
+								printf("WSASend() failed with error %d\n", WSAGetLastError());
+								FreeSocketInformation(wParam);
+								return 0;
+							}
+						}
+						else // No error so update the byte count
+						{
+							printf("WSASend() is OK!\n");
+							SocketInfo->BytesSEND += SendBytes;
+						}
+					}
+
+					if (SocketInfo->BytesSEND == SocketInfo->BytesRECV)
+					{
+						SocketInfo->BytesSEND = 0;
+						SocketInfo->BytesRECV = 0;
+						// If a RECV occurred during our SENDs then we need to post an FD_READ notification on the socket
+						if (SocketInfo->RecvPosted == TRUE)
+						{
+							SocketInfo->RecvPosted = FALSE;
+							PostMessage(hwnd, WM_SOCKET, wParam, FD_READ);
+						}
+					}
 					break;
 				case FD_CLOSE:
 					break;

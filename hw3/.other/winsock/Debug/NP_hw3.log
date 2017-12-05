@@ -1,0 +1,7 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\Common7\IDE\VC\VCTargets\Microsoft.Cpp.Common.props(144,5): warning MSB4211: 正要將屬性 "WindowsTargetPlatformVersion" 第一次設定為某個值，但是它已經在 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\Common7\IDE\VC\VCTargets\Microsoft.Cpp.WindowsSDK.props (29,5)" 使用過了。
+  NP_hw3.cpp
+e:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(138): error C3861: 'GetSocketInformation': 找不到識別項
+e:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(157): error C3861: 'FreeSocketInformation': 找不到識別項
+e:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(170): error C3861: 'GetSocketInformation': 找不到識別項
+e:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(182): error C3861: 'FreeSocketInformation': 找不到識別項
+e:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(201): error C2065: 'WM_SOCKET': 未宣告的識別項

@@ -25,14 +25,13 @@ using namespace std;
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
 #define URL_LEN 2000
-
+#define	F_READ 1
+#define F_WRITE 2
 
 const char *error_file = "Error : '%s' doesn't exist<br>";
 
-typedef enum {
-	F_READ,
-	F_WRITE,
-}status_code;
+
+
 
 typedef struct _SOCKET_INFORMATION {
 	BOOL RecvPosted;
@@ -48,10 +47,10 @@ char ip[MAX_CLI_NUM][HOST_LEN], port[MAX_CLI_NUM][PORT_FILE_LEN], file[MAX_CLI_N
 FILE *fp[MAX_CLI_NUM];
 char *mes_buf = (char*)malloc(sizeof(char)*BUF_LEN);
 static HWND hwndEdit;
-static SOCKET msock, ssock;
-int host_num = 0;//0~5
+static SOCKET msock, ssock,httpsocket;
+SOCKET host_num = 0;//0~5
 int Ssockfd[MAX_CLI_NUM] = { 0,0,0,0,0 };
-int status[MAX_CLI_NUM] = { F_READ, F_READ, F_READ, F_READ, F_READ };
+//int status[MAX_CLI_NUM] = { F_READ, F_READ, F_READ, F_READ, F_READ };
 
 BOOL CALLBACK MainDlgProc(HWND, UINT, WPARAM, LPARAM);
 int EditPrintf (HWND, TCHAR *, ...);
@@ -141,37 +140,37 @@ int read_http_request(int fd, char *mes_buf) {
 }
 void gen_cgi_html(void) {
 	char temp[100]="";
-	send(ssock,"HTTP/1.1 200 OK\r\n",strlen("HTTP/1.1 200 OK\r\n"),0);
-	send(ssock, "Content-Type: text/html\r\n\r\n",strlen("Content-Type: text/html\r\n\r\n"),0);
-	send(ssock, "<html>\n", strlen("<html>\n"), 0);
-	send(ssock, "<head>\n", strlen("<head>\n"), 0);
-	send(ssock, "<meta http-equiv='Content-Type' content='text/html; charset=big5' />\n", strlen("<meta http-equiv='Content-Type' content='text/html; charset=big5' />\n"), 0);
-	send(ssock, "<title>Network Programming Homework 3</title>\n", strlen("<title>Network Programming Homework 3</title>\n"), 0);
-	send(ssock, "</head>\n", strlen("</head>\n"), 0);
-	send(ssock, "<body bgcolor=#336699>\n", strlen("<body bgcolor=#336699>\n"), 0);
-	send(ssock, "<font face='Courier New' size=2 color=#FFFF99>\n", strlen("<font face='Courier New' size=2 color=#FFFF99>\n"), 0);
-	send(ssock, "<table width='800' border='1'>\n", strlen("<table width='800' border='1'>\n"), 0);
-	send(ssock, "<tr>\n", strlen("<tr>\n"), 0);
+	send(httpsocket,"HTTP/1.1 200 OK\r\n",strlen("HTTP/1.1 200 OK\r\n"),0);
+	send(httpsocket, "Content-Type: text/html\r\n\r\n",strlen("Content-Type: text/html\r\n\r\n"),0);
+	send(httpsocket, "<html>\n", strlen("<html>\n"), 0);
+	send(httpsocket, "<head>\n", strlen("<head>\n"), 0);
+	send(httpsocket, "<meta http-equiv='Content-Type' content='text/html; charset=big5' />\n", strlen("<meta http-equiv='Content-Type' content='text/html; charset=big5' />\n"), 0);
+	send(httpsocket, "<title>Network Programming Homework 3</title>\n", strlen("<title>Network Programming Homework 3</title>\n"), 0);
+	send(httpsocket, "</head>\n", strlen("</head>\n"), 0);
+	send(httpsocket, "<body bgcolor=#336699>\n", strlen("<body bgcolor=#336699>\n"), 0);
+	send(httpsocket, "<font face='Courier New' size=2 color=#FFFF99>\n", strlen("<font face='Courier New' size=2 color=#FFFF99>\n"), 0);
+	send(httpsocket, "<table width='800' border='1'>\n", strlen("<table width='800' border='1'>\n"), 0);
+	send(httpsocket, "<tr>\n", strlen("<tr>\n"), 0);
 	sprintf(temp,"<td>%s</td>\n",ip[0]);
-	send(ssock, temp,  strlen(temp), 0);
+	send(httpsocket, temp,  strlen(temp), 0);
 	sprintf(temp, "<td>%s</td>\n", ip[1]);
-	send(ssock, temp, strlen(temp), 0);
+	send(httpsocket, temp, strlen(temp), 0);
 	sprintf(temp, "<td>%s</td>\n", ip[2]);
-	send(ssock, temp, strlen(temp), 0);
+	send(httpsocket, temp, strlen(temp), 0);
 	sprintf(temp, "<td>%s</td>\n", ip[3]);
-	send(ssock, temp, strlen(temp), 0);
+	send(httpsocket, temp, strlen(temp), 0);
 	sprintf(temp, "<td>%s</td>\n", ip[4]);
-	send(ssock, temp, strlen(temp), 0);
-	send(ssock, "<tr>\n",strlen("<tr>\n"),0);
-	send(ssock, "<td valign='top' id='m0'></td>\n", strlen("<td valign='top' id='m0'></td>\n"), 0);
-	send(ssock, "<td valign='top' id='m1'></td>\n", strlen("<td valign='top' id='m1'></td>\n"), 0);
-	send(ssock, "<td valign='top' id='m2'></td>\n", strlen("<td valign='top' id='m2'></td>\n"), 0);
-	send(ssock, "<td valign='top' id='m3'></td>\n", strlen("<td valign='top' id='m3'></td>\n"), 0);
-	send(ssock, "<td valign='top' id='m4'></td>\n", strlen("<td valign='top' id='m4'></td>\n"), 0);
-	send(ssock, "</table>\n", strlen("</table>\n"), 0);
-	send(ssock, "</font>\n", strlen("</font>\n"), 0);
-	send(ssock, "</body>\n", strlen("</body>\n"), 0);
-	send(ssock, "</html>\n", strlen("</html>\n"), 0);
+	send(httpsocket, temp, strlen(temp), 0);
+	send(httpsocket, "<tr>\n",strlen("<tr>\n"),0);
+	send(httpsocket, "<td valign='top' id='m0'></td>\n", strlen("<td valign='top' id='m0'></td>\n"), 0);
+	send(httpsocket, "<td valign='top' id='m1'></td>\n", strlen("<td valign='top' id='m1'></td>\n"), 0);
+	send(httpsocket, "<td valign='top' id='m2'></td>\n", strlen("<td valign='top' id='m2'></td>\n"), 0);
+	send(httpsocket, "<td valign='top' id='m3'></td>\n", strlen("<td valign='top' id='m3'></td>\n"), 0);
+	send(httpsocket, "<td valign='top' id='m4'></td>\n", strlen("<td valign='top' id='m4'></td>\n"), 0);
+	send(httpsocket, "</table>\n", strlen("</table>\n"), 0);
+	send(httpsocket, "</font>\n", strlen("</font>\n"), 0);
+	send(httpsocket, "</body>\n", strlen("</body>\n"), 0);
+	send(httpsocket, "</html>\n", strlen("</html>\n"), 0);
 	//fflush(stdout);
 }
 void cut_url(char *buff) {
@@ -216,12 +215,12 @@ void cut_url(char *buff) {
 int connect_to_server(int i, HWND hwnd) {//return fd
 	struct hostent *he;
 	struct sockaddr_in client_sin;
-	int    client_fd;
+	int client_fd;
 	int one = 1;
 	char temp[100];
 
 	if (ip[i][0] == '\0' || port[i][0] == '\0' || file[i][0] == '\0')
-		return(0);
+		return(-1);
 
 
 	he = gethostbyname(ip[i]);
@@ -231,10 +230,25 @@ int connect_to_server(int i, HWND hwnd) {//return fd
 	client_sin.sin_addr = *((struct in_addr *)he->h_addr);
 	client_sin.sin_port = htons((u_short)atoi(port[i]));
 	if (connect(client_fd, (struct sockaddr *)&client_sin, sizeof(client_sin)) == -1) {
-		EditPrintf(hwndEdit, TEXT("client: can't connect to server, ec:%d"), WSAGetLastError());
+		EditPrintf(hwndEdit, "client: can't connect to server, ec:%d\n", WSAGetLastError());
 		sprintf(temp, "<script>document.all['m%d'].innerHTML += \"connect error<br>\";</script>", i);
 		send(ssock, temp, strlen(temp), 0);
+		return(-1);
 	}
+	else {
+		if(WSAAsyncSelect(client_fd, hwnd, WM_SERVER_NOTIFY, F_READ) == SOCKET_ERROR){
+			EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
+			closesocket(Ssockfd[i]);
+			WSACleanup();
+			return -1;
+		}
+		else {
+			EditPrintf(hwndEdit, "WSAAsyncSelect set successful\n" );
+		}
+	}
+	
+
+	ioctlsocket(client_fd, FIONBIO, (u_long*)&one);
 	
 	return (client_fd);
 }
@@ -262,25 +276,17 @@ int hw3cgi( HWND hwnd){
 	for (int i = 0; i<5; i++) {
 		Ssockfd[i] = connect_to_server(i, hwnd);
 		if (Ssockfd[i] > 0) {
-
+			EditPrintf(hwndEdit, "Ssockfd[%d]=%d\n",i, Ssockfd[i]);
 			host_num++;
-
-			sprintf(mes_buf, error_file, file[i]);
-			if ((fp[i] = fopen(file[i], "r")) == NULL) {//fp[i] = fopen(file[i], "r");
+			
+			if ((fp[i] = fopen(file[i], "r")) == NULL) {
+				EditPrintf(hwndEdit, "open file error:%d,%s\n", i, file[i]);
+				sprintf(mes_buf, error_file, file[i]);
 				print_to_html(i, mes_buf);
 			}
 
-			if ((temp = WSAAsyncSelect(Ssockfd[i], hwnd, WM_SERVER_NOTIFY, F_READ)) == SOCKET_ERROR)
-			{
-				EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
-				closesocket(Ssockfd[i]);
-				WSACleanup();
-				return -1;
-			}
-			else {
-				EditPrintf(hwndEdit,"select else ,%d,\n", temp);
-			}
-			status[i] = F_READ;
+			EditPrintf(hwndEdit,"Ssockfd[%d]=%d,WM_SERVER_NOTIFY,F_READ\n", i,Ssockfd[i]);
+			
 		}
 	}
 	return(0);
@@ -293,8 +299,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 }
 
 BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
-{
-	
+{	
 	WSADATA wsaData;
 	static struct sockaddr_in sa;
 	SOCKET Accept;
@@ -312,6 +317,9 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	int ready_write_len = 0;
 	int haven_write_len = 0;
 	int i = 0;
+	int j = 0;
+
+
 
 	switch(Message) 
 	{
@@ -322,9 +330,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			switch(LOWORD(wParam))
 			{
 				case ID_LISTEN:
-
 					WSAStartup(MAKEWORD(2, 0), &wsaData);
-
 					//create master socket
 					msock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -395,40 +401,56 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 					} 
 					break;
 				}
-				case FD_READ: {
+				case FD_READ: {//recv http request
 					//Write your code for read event here.
-					isresult = read_http_request(ssock, mes_buf, hwndEdit);
-					EditPrintf(hwndEdit, TEXT("1.sock=%d,isresult=%d,len=%d,\n-----\n%s\n-----\n"), ssock, isresult, strlen(mes_buf), mes_buf);
-					err = WSAAsyncSelect(ssock, hwnd, WM_SOCKET_NOTIFY, FD_WRITE);
-					if (err == SOCKET_ERROR) {
-						EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
-						closesocket(ssock);
-						WSACleanup();
-						return TRUE;
+					isresult = read_http_request(ssock, mes_buf);//return the length of first legal line inclued GET
+					if (isresult > 0) {						
+						if (strstr(mes_buf, "GET") != NULL && strstr(mes_buf, "form_get.htm") != NULL) {
+							EditPrintf(hwndEdit, TEXT("sock=%d,len=%d,\n-----\n%s\n-----\n"), ssock, strlen(mes_buf), mes_buf);
+							httpsocket = ssock;
+							if ((err = WSAAsyncSelect(httpsocket, hwnd, WM_SOCKET_NOTIFY, FD_WRITE)) == SOCKET_ERROR) {
+								EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
+								closesocket(ssock);
+								WSACleanup();
+								return TRUE;
+							}
+							else {
+								EditPrintf(hwndEdit, "WSAAsyncSelect successful, httpsocket=%d, WM_SOCKET_NOTIFY, FD_WRITE\n", httpsocket);
+							}
+						}
+						
 					}
 					break;
 				}
-				case FD_WRITE:{
+				case FD_WRITE:{//print form_get html
 					//Write your code for write event here
 					char *buff = (char*)malloc(sizeof(char)*BUF_LEN);
 				
-					EditPrintf(hwndEdit, "FD_WRITE,%s\n", mes_buf);
+					EditPrintf(hwndEdit, "FD_WRITE,socket=%d,%s\n", wParam,mes_buf);
 					if (strstr(mes_buf, "GET") != NULL && strstr(mes_buf, "form_get.htm") != NULL) {
-						EditPrintf(hwndEdit, "FD_WRITE:find GET\n");
+						EditPrintf(hwndEdit, "FD_WRITE:find form_get.htm\n");
 						sprintf(buff, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
 						send(ssock, buff, strlen(buff), 0);
 						gen_html();
-						closesocket(ssock);
+						closesocket(httpsocket);
 					}
 					else if (strstr(mes_buf, "GET") != NULL && strstr(mes_buf, "hw3.cgi") != NULL) {
+						httpsocket = ssock;
+						if ((err = WSAAsyncSelect(httpsocket, hwnd, WM_SERVER_NOTIFY, F_READ)) == SOCKET_ERROR) {
+							EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
+							closesocket(ssock);
+							WSACleanup();
+							return TRUE;
+						}
 						EditPrintf(hwndEdit, "FD_WRITE:find hw3.cgi,%s\n", mes_buf);
 						sscanf(mes_buf,"GET %s HTTP/1.1\n",mes_buf);
 						cut_url(mes_buf);
+						/*for(j=0;j<5;j++)
+							EditPrintf(hwndEdit, "j=%d,ip=%s,port=%s,file=%s\n", j, ip[j],port[j],file[j]);*/
 						gen_cgi_html();
 						hw3cgi(hwnd);
 					}
 					free(buff);
-
 					break;
 				}
 				case FD_CLOSE:
@@ -436,26 +458,35 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			};
 			break;
 		case WM_SERVER_NOTIFY: {
-			EditPrintf(hwndEdit, "enter WM_SERVER_NOTIFY\n");
 			switch (WSAGETSELECTEVENT(lParam)) {
 				case F_READ: {
 					EditPrintf(hwndEdit, "enter F_READ\n");
-					for (i = 0; i < MAX_CLI_NUM; i++) {
-						EditPrintf(hwndEdit, "wParam=%d,Ssockfd[i]=%d\n", wParam, Ssockfd[i]);
-						if (wParam == Ssockfd[i]) {
-							memset(mes_buf, 0, BUF_LEN);
+					for (i = 0; i < MAX_CLI_NUM; i++) 
+						if (wParam == Ssockfd[i]) 
+							break;
+					if (i == 5)
+						break;
 
-							read_len = readline(Ssockfd[i], mes_buf, BUF_LEN - 1);
-							EditPrintf(hwndEdit, mes_buf, strlen(mes_buf));
-							if (read_len) {
-								replace_special_char(mes_buf);
-								print_to_html(i, mes_buf);
-							}
+					EditPrintf(hwndEdit, "wParam=%d = Ssockfd[i]=%d\n", wParam, Ssockfd[i]);
 
-							if (strstr(mes_buf, "% ") != NULL) 
-								WSAAsyncSelect(Ssockfd[i], hwnd, WM_SERVER_NOTIFY, F_WRITE);
-						}	
+					memset(mes_buf, 0, BUF_LEN);
+
+					read_len = readline(Ssockfd[i], mes_buf, BUF_LEN - 1);
+					EditPrintf(hwndEdit, "mes_len=%d,mes_buf=%s\n", strlen(mes_buf), mes_buf);
+					if (read_len) {
+						EditPrintf(hwndEdit, "replace_special_char\n");
+						replace_special_char(mes_buf);
+						EditPrintf(hwndEdit, "print to html\n");
+						print_to_html(i, mes_buf);
+						EditPrintf(hwndEdit, "finish\n");
 					}
+
+					if (strstr(mes_buf, "% ") != NULL) {
+						EditPrintf(hwndEdit, "find %_ \n");
+						WSAAsyncSelect(Ssockfd[i], hwnd, WM_SERVER_NOTIFY, F_WRITE);
+					}
+					i = MAX_CLI_NUM;
+						
 					break;
 				}
 				case F_WRITE: {
@@ -487,7 +518,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 									continue;
 								}
 
-								status[i] = F_READ;
+								//status[i] = F_READ;
 							}
 						}
 					}

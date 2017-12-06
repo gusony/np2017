@@ -328,11 +328,10 @@ int main(int argc, char **argv)
 					printf("read:%d, send:%d, %s<br>", strlen(buffer), n, buffer);
 				}
 
-        	                FD_CLR(clients[i], &ws);
-                	        status[i] = F_READING;
-                        	FD_SET(clients[i], &rs);
+	            FD_CLR(clients[i], &ws);
+		        status[i] = F_READING;
+	        	FD_SET(clients[i], &rs);
 				sleep(1);
-
 			}
 			else if(status[i] == F_READING && FD_ISSET(clients[i], &rfds))
 			{

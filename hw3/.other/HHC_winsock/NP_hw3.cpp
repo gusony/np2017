@@ -19,7 +19,7 @@ list<SOCKET> Socks;
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
-	
+
 	return DialogBox(hInstance, MAKEINTRESOURCE(ID_MAIN), NULL, MainDlgProc);
 }
 
@@ -34,7 +34,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	int err;
 
 
-	switch(Message) 
+	switch(Message)
 	{
 		case WM_INITDIALOG:
 			hwndEdit = GetDlgItem(hwnd, IDC_RESULT);
@@ -79,7 +79,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 					}
 
 					err = listen(msock, 2);
-		
+
 					if( err == SOCKET_ERROR ) {
 						EditPrintf(hwndEdit, TEXT("=== Error: listen error ===\r\n"));
 						WSACleanup();
@@ -292,5 +292,5 @@ int EditPrintf (HWND hwndEdit, TCHAR * szFormat, ...)
      SendMessage (hwndEdit, EM_SETSEL, (WPARAM) -1, (LPARAM) -1) ;
      SendMessage (hwndEdit, EM_REPLACESEL, FALSE, (LPARAM) szBuffer) ;
      SendMessage (hwndEdit, EM_SCROLLCARET, 0, 0) ;
-	 return SendMessage(hwndEdit, EM_GETLINECOUNT, 0, 0); 
+	 return SendMessage(hwndEdit, EM_GETLINECOUNT, 0, 0);
 }

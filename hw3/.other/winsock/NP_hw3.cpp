@@ -20,13 +20,14 @@ using namespace std;
 #define DATA_BUFSIZE 8192
 #define WM_SOCKET_NOTIFY (WM_USER + 1)
 #define WM_SERVER_NOTIFY (WM_USER + 2)
-#define BUF_LEN 1000
+#define BUF_LEN 10000
 #define MAX_CLI_NUM 5
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
 #define URL_LEN 2000
 #define	F_READ 1
 #define F_WRITE 2
+#define F_ALLEXIT 3
 
 const char *error_file = "Error : '%s' doesn't exist<br>";
 
@@ -47,7 +48,7 @@ char ip[MAX_CLI_NUM][HOST_LEN], port[MAX_CLI_NUM][PORT_FILE_LEN], file[MAX_CLI_N
 FILE *fp[MAX_CLI_NUM];
 char *mes_buf = (char*)malloc(sizeof(char)*BUF_LEN);
 static HWND hwndEdit;
-static SOCKET msock, ssock,httpsocket;
+static SOCKET msock, ssock, httpsocket;
 SOCKET host_num = 0;//0~5
 int Ssockfd[MAX_CLI_NUM] = { 0,0,0,0,0 };
 //int status[MAX_CLI_NUM] = { F_READ, F_READ, F_READ, F_READ, F_READ };
@@ -84,7 +85,7 @@ void replace_special_char(char *mes_buf) {
 	strcpy(mes_buf, result);
 }
 void print_to_html(int i, char *mes_buf) {
-	char temp[1000];
+	char temp[BUF_LEN];
 	sprintf(temp,"<script>document.all['m%d'].innerHTML += \"<b>%s</b>\";</script>\r\n", i, mes_buf);
 	send(ssock,temp,strlen(temp),0);
 }
@@ -109,9 +110,9 @@ int readline(int fd, char *str, int maxlen){
 	{	
 		if ((rc = recv(fd, &c, 1, 0)) == 1)
 		{
-			if (c == '\n') break;
-			if (c == '\r') continue;
-			//if (c == '\0') break;
+			//if (c == '\n') break;
+			//if (c == '\r') continue;
+			if (c == '\0') break;
 			*str++ = c;
 		}
 		else if (rc == 0)
@@ -460,25 +461,22 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		case WM_SERVER_NOTIFY: {
 			switch (WSAGETSELECTEVENT(lParam)) {
 				case F_READ: {
-					EditPrintf(hwndEdit, "enter F_READ\n");
+					//EditPrintf(hwndEdit, "enter F_READ\n");
 					for (i = 0; i < MAX_CLI_NUM; i++) 
 						if (wParam == Ssockfd[i]) 
 							break;
 					if (i == 5)
 						break;
 
-					EditPrintf(hwndEdit, "wParam=%d = Ssockfd[i]=%d\n", wParam, Ssockfd[i]);
-
 					memset(mes_buf, 0, BUF_LEN);
-
 					read_len = readline(Ssockfd[i], mes_buf, BUF_LEN - 1);
-					EditPrintf(hwndEdit, "mes_len=%d,mes_buf=%s\n", strlen(mes_buf), mes_buf);
-					if (read_len) {
-						EditPrintf(hwndEdit, "replace_special_char\n");
+					if (strlen(mes_buf) > 0 ) {
+						//EditPrintf(hwndEdit, "mes_len=%d,mes_buf=%s\n", strlen(mes_buf), mes_buf);
+						//EditPrintf(hwndEdit, "replace_special_char\n");
 						replace_special_char(mes_buf);
-						EditPrintf(hwndEdit, "print to html\n");
+						EditPrintf(hwndEdit, "print to html,%s,\n", mes_buf);
 						print_to_html(i, mes_buf);
-						EditPrintf(hwndEdit, "finish\n");
+						//EditPrintf(hwndEdit, "finish\n");
 					}
 
 					if (strstr(mes_buf, "% ") != NULL) {
@@ -499,31 +497,47 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 								closesocket(Ssockfd[i]);
 								fclose(fp[i]);
 								Ssockfd[i] = 0;
+								if (host_num == 0)
+									closesocket(httpsocket);
 							}
 							else if (ready_write_len > 0) {
+								EditPrintf(hwndEdit, "send to %d,\ncmd=%s,\nlast char =%d,%d\n", Ssockfd[i], mes_buf, mes_buf[strlen(mes_buf)-1], mes_buf[strlen(mes_buf)]);
 								haven_write_len = 0;
 								do {
 									haven_write_len += send(Ssockfd[i], mes_buf, strlen(mes_buf), 0);
 								} while (ready_write_len > haven_write_len);
-
+								EditPrintf(hwndEdit, "replace special char\n");
 								replace_special_char(mes_buf);
-
+								EditPrintf(hwndEdit, "print to html ");
 								print_to_html(i, mes_buf);
+								EditPrintf(hwndEdit, "finish,%s\n", mes_buf);
 
 								if (strstr(mes_buf, "exit") != NULL) {
 									host_num--;
 									closesocket(Ssockfd[i]);
 									fclose(fp[i]);
 									Ssockfd[i] = 0;
+									if (host_num == 0)
+										closesocket(httpsocket);
 									continue;
 								}
-
-								//status[i] = F_READ;
+								if (WSAAsyncSelect(Ssockfd[i], hwnd, WM_SERVER_NOTIFY, F_READ) == SOCKET_ERROR) {
+									EditPrintf(hwndEdit, TEXT("=== Error: select error ===\r\n"));
+									closesocket(Ssockfd[i]);
+									WSACleanup();
+									return -1;
+								}
 							}
 						}
 					}
 					break;
 				}
+				case F_ALLEXIT: {
+					closesocket(httpsocket);
+					break;
+				}
+				default:
+					break;
 
 			
 			}
@@ -541,7 +555,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 int EditPrintf (HWND hwndEdit, TCHAR * szFormat, ...)
 {
-     TCHAR   szBuffer [1024] ;
+     TCHAR   szBuffer [4096] ;
      va_list pArgList ;
 
      va_start (pArgList, szFormat) ;

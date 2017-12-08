@@ -49,12 +49,12 @@ void replace_special_char(char *mes_buf){
 			strcat(result,"<br>");
 		else if(cp[i] == '\r')
 			strcat(result,"");
+		else if(cp[i] == ' ')
+			strcat(result,"&nbsp;");
 		else
 			result[strlen(result)] = cp[i];
 	}
 	strcpy(mes_buf,result);
-}
-void clear_no_use_space(char *mes_buf){
 }
 void print_to_html(int i,char *mes_buf){
 	printf("<script>document.all['m%d'].innerHTML += \"<b>%s</b>\";</script>\r\n",i,mes_buf);
@@ -66,7 +66,7 @@ int readline(int fd, char *ptr, int maxlen){// read from file
 
     for(n=0; n<maxlen;n++){
         if((rc=read(fd, &c, 1))==1){
-        	printf("%c<br>",c);
+        	//printf("%c<br>",c);
             if(c=='\0')
                 break;
             *ptr++ = c;
@@ -88,11 +88,11 @@ int readfile(FILE *fp,char *mes_buf){//return strlen
 	if(fgets(c, sizeof(c), fp) == NULL)
 		return(0);
 
-	while(c[strlen(c)] == 0 && c[strlen(c)-1] == 10 && c[strlen(c)-2] == 32){
+	/*while(c[strlen(c)] == 0 && c[strlen(c)-1] == 10 && c[strlen(c)-2] == 32){
     	t = strlen(c);
     	c[t-1] =0;
     	c[t-2] =10;
-    }
+    }*/
 	strcpy(mes_buf, c);
 	len = strlen(c);
 	return(len);
@@ -208,7 +208,9 @@ int main(int argc, char* argv[],char *envp[]){
 	int read_len = 0;
 	int ready_write_len = 0;
 	int haven_write_len = 0;
-	char *mes_buf = malloc(sizeof(char)*BUF_LEN);
+	char *mes_buf[MAX_CLI_NUM] = {NULL, NULL, NULL, NULL, NULL} 
+	for (int i =0 ; i<MAX_CLI_NUM; i++)
+		mes_buf[i] = malloc(sizeof(char)*BUF_LEN);
 
 
 	char query[URL_LEN];
@@ -250,15 +252,16 @@ int main(int argc, char* argv[],char *envp[]){
 				bzero(mes_buf, BUF_LEN);
 
 				read_len = readline(Ssockfd[i],mes_buf,BUF_LEN-1);
-				if(read_len){
-					replace_special_char(mes_buf);
-					print_to_html(i,mes_buf);
-				}
-
+				
 				if(strstr(mes_buf, "% ")!=NULL ){
 					status[i] = F_WRITE;
 					FD_CLR(Ssockfd[i], &rs);
 					FD_SET(Ssockfd[i], &ws);
+				}
+
+				if(read_len){
+					replace_special_char(mes_buf);
+					print_to_html(i,mes_buf);
 				}
 			}
 			else if(FD_ISSET(Ssockfd[i], &wfds) && status[i] == F_WRITE ){//write to server
@@ -279,8 +282,9 @@ int main(int argc, char* argv[],char *envp[]){
 						haven_write_len += write(Ssockfd[i], mes_buf,strlen(mes_buf));
 					}while(ready_write_len > haven_write_len);
 
+    				printf("1.len=%d,%s<br>",strlen(mes_buf),mes_buf);
 					replace_special_char(mes_buf);
-
+					printf("2.len=%d,%s<br>",strlen(mes_buf),mes_buf);
 					print_to_html(i,mes_buf);
 
 					if(strstr(mes_buf, "exit")!=NULL){

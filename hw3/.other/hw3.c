@@ -17,7 +17,7 @@
 #define HOST_LEN 50
 #define PORT_FILE_LEN 10
 #define URL_LEN 2000
-#define BUF_LEN 10000
+#define BUF_LEN 40000
 #define MAX_CLI_NUM 5
 
 const char *error_file = "Error : '%s' doesn't exist<br>";
@@ -76,10 +76,10 @@ int readline(int fd, char *ptr, int maxlen){// read from file
             else break;
         }
         else
-            return(-1);
+            return(rc);
     }
     *ptr = 0;
-    return(n);//string length
+    return(strlen(ptr));//string length
 }
 int readfile(FILE *fp,char *mes_buf){//return strlen
 	int len=0,t;
@@ -206,15 +206,20 @@ int main(int argc, char* argv[],char *envp[]){
 	int Ssockfd[MAX_CLI_NUM]= {0,0,0,0,0};
 	int status[MAX_CLI_NUM] = {F_READ, F_READ, F_READ, F_READ, F_READ};
 	int read_len = 0;
-	int ready_write_len = 0;
-	int haven_write_len = 0;
-	char *mes_buf[MAX_CLI_NUM] = {NULL, NULL, NULL, NULL, NULL} 
-	for (int i =0 ; i<MAX_CLI_NUM; i++)
+	int ready_write_len[MAX_CLI_NUM] = {0, 0, 0, 0, 0};
+	int haven_write_len[MAX_CLI_NUM] = {0, 0, 0, 0, 0};
+	int i = 0;
+	int issend[5] = {0, 0, 0, 0, 0};
+	char *mes_buf[MAX_CLI_NUM] = {NULL, NULL, NULL, NULL, NULL};
+	char temp[BUF_LEN];
+	for (i =0 ; i<MAX_CLI_NUM; i++)
 		mes_buf[i] = malloc(sizeof(char)*BUF_LEN);
-
+	i = 0;
+	int err=0;
 
 	char query[URL_LEN];
-    strcpy(query , getenv("QUERY_STRING") );    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7575&f1=t1.txt");
+    strcpy(query , getenv("QUERY_STRING") );
+    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7790&f1=t6.txt&h2=&p2=&f2=&h3=&p3=&f3=&h4=&p4=&f4=&h5=&p5=&f5=");
 
 	cut_url(query);
 	gen_html();
@@ -227,10 +232,10 @@ int main(int argc, char* argv[],char *envp[]){
 			nfds=Ssockfd[i]+1;
 			FD_SET(Ssockfd[i],&rs);
 			FD_SET(Ssockfd[i],&ws);
-			sprintf(mes_buf, error_file ,file[i]);
+			sprintf(mes_buf[i], error_file ,file[i]);
 
 			if ((fp[i] = fopen(file[i], "r")) == NULL){//fp[i] = fopen(file[i], "r");
-				print_to_html(i,mes_buf);
+				print_to_html(i,mes_buf[i]);
 			}
 			status[i] = F_READ;
 		}
@@ -248,26 +253,13 @@ int main(int argc, char* argv[],char *envp[]){
 		for(int i=0; i<5; i++){
 			if(Ssockfd[i] <= 0)	continue;
 
-			if(     FD_ISSET(Ssockfd[i], &rfds) && status[i] == F_READ){//read from server
-				bzero(mes_buf, BUF_LEN);
+			if(     FD_ISSET(Ssockfd[i], &rfds) && status[i] == F_READ && issend[i]==0){//read from server
+				bzero(mes_buf[i], BUF_LEN);
 
-				read_len = readline(Ssockfd[i],mes_buf,BUF_LEN-1);
-				
-				if(strstr(mes_buf, "% ")!=NULL ){
-					status[i] = F_WRITE;
-					FD_CLR(Ssockfd[i], &rs);
-					FD_SET(Ssockfd[i], &ws);
-				}
+				err = readline(Ssockfd[i], mes_buf[i], BUF_LEN-1);
 
-				if(read_len){
-					replace_special_char(mes_buf);
-					print_to_html(i,mes_buf);
-				}
-			}
-			else if(FD_ISSET(Ssockfd[i], &wfds) && status[i] == F_WRITE ){//write to server
-				bzero(mes_buf, BUF_LEN);
-
-				if( (ready_write_len = readfile(fp[i],mes_buf) ) <= 0 ){
+				if(strlen(mes_buf[i]) == 0 || err == 0){
+					printf("close fd[%d]<br>",i);
 					host_num--;
 					FD_CLR(Ssockfd[i],&rs);
 					FD_CLR(Ssockfd[i],&ws);
@@ -276,30 +268,66 @@ int main(int argc, char* argv[],char *envp[]){
 					Ssockfd[i] = 0;
 					continue;
 				}
-				else if( ready_write_len > 0 ){
-					haven_write_len = 0;
-					do{
-						haven_write_len += write(Ssockfd[i], mes_buf,strlen(mes_buf));
-					}while(ready_write_len > haven_write_len);
 
-    				printf("1.len=%d,%s<br>",strlen(mes_buf),mes_buf);
-					replace_special_char(mes_buf);
-					printf("2.len=%d,%s<br>",strlen(mes_buf),mes_buf);
-					print_to_html(i,mes_buf);
+				if(strstr(mes_buf[i], "% ")!=NULL ){
+					printf("find %%_<br>");
+					status[i] = F_WRITE;
+					FD_CLR(Ssockfd[i], &rs);
+					FD_SET(Ssockfd[i], &ws);
+					issend[i] =1;
+				}
 
-					if(strstr(mes_buf, "exit")!=NULL){
-						host_num--;
+				if(strlen(mes_buf[i]) > 0){
+					replace_special_char(mes_buf[i]);
+					print_to_html(i,mes_buf[i]);
+				}
+			}
+			else if(FD_ISSET(Ssockfd[i], &wfds) && status[i] == F_WRITE ){//write to server
+				printf("issend[%d]=%d,read=%d,have=%d<br>",i,issend[i],ready_write_len[i],haven_write_len[i]);
+				if(issend[i]==1 && ready_write_len[i] > 0){//still have date need to send
+					if(ready_write_len[i] <= haven_write_len[i]){
+						issend[i]=0;
+						ready_write_len[i] = haven_write_len[i] = 0;
+						status[i] = F_READ;
+			        	FD_CLR(Ssockfd[i], &ws);
+		        		FD_SET(Ssockfd[i], &rs);
+		        		continue;
+					}
+					printf("issend[%d]=1,haven_write_len[%d] =%d,<br>",i,i,haven_write_len[i]);
+					strcpy(temp,mes_buf[i]);
+
+					haven_write_len[i] += write(Ssockfd[i], &temp[haven_write_len[i]],strlen(mes_buf[i]));
+				}
+				else {//no data need to send, so read file command
+					bzero(mes_buf[i], BUF_LEN);
+					if( (ready_write_len[i] = readfile(fp[i],mes_buf[i]) ) <= 0 ){
+						printf("read the end of file[%d] ,exit<br>",i);
+						/*host_num--;
 						FD_CLR(Ssockfd[i],&rs);
 						FD_CLR(Ssockfd[i],&ws);
 						close(Ssockfd[i]);
 						fclose(fp[i]);
-						Ssockfd[i] = 0;
+						Ssockfd[i] = 0;*/
 						continue;
 					}
+					else if( ready_write_len[i] > 0 ){
+						printf("1.ready_write_len[%d]=%d<br>",i,ready_write_len[i]);
+						haven_write_len[i] = 0;
+						haven_write_len[i] += write(Ssockfd[i], mes_buf[i],strlen(mes_buf[i]));
+						printf("1.haven_write_len[%d]=%d<br>",i,haven_write_len[i]);
+						if(ready_write_len[i] <= haven_write_len[i]){
+							printf("send finish[%d]<br>",i);
+							issend[i]=0;
+							ready_write_len[i] = 0;
+							haven_write_len[i] = 0;
+							status[i] = F_READ;
+				        	FD_CLR(Ssockfd[i], &ws);
+			        		FD_SET(Ssockfd[i], &rs);
+						}
 
-		        	status[i] = F_READ;
-		        	FD_CLR(Ssockfd[i], &ws);
-	        		FD_SET(Ssockfd[i], &rs);
+						replace_special_char(mes_buf[i]);
+						print_to_html(i,mes_buf[i]);
+					}
 				}
 			}
 		}

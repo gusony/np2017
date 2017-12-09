@@ -1,68 +1,73 @@
 ﻿  NP_hw3.cpp
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(71): warning C4018: '<': signed/unsigned 不相符
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(66): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(79): warning C4018: '<': signed/unsigned 不相符
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(74): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(73): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(75): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(77): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(79): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
 d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(81): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(85): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(83): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(85): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(87): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(89): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(91): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(90): note: 請參閱 'strcat' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(96): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(89): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(100): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(94): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(105): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note: 請參閱 'fopen' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(139): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(150): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(155): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(166): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(157): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(168): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(159): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(170): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(161): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(172): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(163): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(174): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(191): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(193): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(194): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(199): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(200): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(202): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
 d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(204): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(207): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(205): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(210): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(211): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(453): note: 請參閱 'strtok' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(215): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(210): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(218): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(235): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(221): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(246): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(268): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(279): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(283): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(268): warning C4101: 't': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(294): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note: 請參閱 'fopen' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(285): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(296): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(433): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(428): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: 請參閱 'sprintf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(447): warning C4996: 'sscanf': This function or variable may be unsafe. Consider using sscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(442): warning C4996: 'sscanf': This function or variable may be unsafe. Consider using sscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(2254): note: 請參閱 'sscanf' 的宣告
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(307): warning C4101: 'SocketInfo': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(308): warning C4101: 'RecvBytes': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(306): warning C4101: 'Accept': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(310): warning C4101: 'Flags': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(309): warning C4101: 'SendBytes': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(317): warning C4101: 'buff': 未參考的區域變數
-d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(312): warning C4101: 'temp': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(499): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: 請參閱 'strcpy' 的宣告
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(312): warning C4101: 'SocketInfo': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(313): warning C4101: 'RecvBytes': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(311): warning C4101: 'Accept': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(315): warning C4101: 'Flags': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(314): warning C4101: 'SendBytes': 未參考的區域變數
+d:\google drive\0.school\np\np2017\hw3\.other\winsock\np_hw3.cpp(324): warning C4101: 'buff': 未參考的區域變數
+NP_hw3.obj : warning LNK4075: 忽略 '/EDITANDCONTINUE'，由於 '/SAFESEH' 規格
   NP_hw3.vcxproj -> D:\Google Drive\0.school\NP\np2017\hw3\.other\winsock\Debug\NP_hw3.exe

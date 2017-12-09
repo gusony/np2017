@@ -1,6 +1,0 @@
-﻿C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\VC\VCTargets\Microsoft.Cpp.Common.props(144,5): warning MSB4211: 正要將屬性 "WindowsTargetPlatformVersion" 第一次設定為某個值，但是它已經在 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\VC\VCTargets\Microsoft.Cpp.WindowsSDK.props (29,5)" 使用過了。
-  NP_hw3.cpp
-NP_hw3.obj : warning LNK4075: 忽略 '/EDITANDCONTINUE'，由於 '/SAFESEH' 規格
-NP_hw3.obj : error LNK2019: 無法解析的外部符號 "void __cdecl http_read_handler(unsigned int,struct HWND__ *)" (?http_read_handler@@YAXIPAUHWND__@@@Z) 在函式 "int __stdcall MainDlgProc(struct HWND__ *,unsigned int,unsigned int,long)" (?MainDlgProc@@YGHPAUHWND__@@IIJ@Z) 中被參考
-NP_hw3.obj : error LNK2019: 無法解析的外部符號 "void __cdecl http_write_handler(struct HWND__ *,unsigned int,struct HWND__ *)" (?http_write_handler@@YAXPAUHWND__@@I0@Z) 在函式 "int __stdcall MainDlgProc(struct HWND__ *,unsigned int,unsigned int,long)" (?MainDlgProc@@YGHPAUHWND__@@IIJ@Z) 中被參考
-Debug\NP_hw3.exe : fatal error LNK1120: 2 個無法解析的外部符號

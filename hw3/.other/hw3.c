@@ -270,7 +270,7 @@ int main(int argc, char* argv[],char *envp[]){
 				}
 
 				if(strstr(mes_buf[i], "% ")!=NULL ){
-					printf("find %%_<br>");
+					//printf("find %%_<br>");
 					status[i] = F_WRITE;
 					FD_CLR(Ssockfd[i], &rs);
 					FD_SET(Ssockfd[i], &ws);
@@ -283,7 +283,7 @@ int main(int argc, char* argv[],char *envp[]){
 				}
 			}
 			else if(FD_ISSET(Ssockfd[i], &wfds) && status[i] == F_WRITE ){//write to server
-				printf("issend[%d]=%d,read=%d,have=%d<br>",i,issend[i],ready_write_len[i],haven_write_len[i]);
+				//printf("issend[%d]=%d,read=%d,have=%d<br>",i,issend[i],ready_write_len[i],haven_write_len[i]);
 				if(issend[i]==1 && ready_write_len[i] > 0){//still have date need to send
 					if(ready_write_len[i] <= haven_write_len[i]){
 						issend[i]=0;
@@ -293,7 +293,7 @@ int main(int argc, char* argv[],char *envp[]){
 		        		FD_SET(Ssockfd[i], &rs);
 		        		continue;
 					}
-					printf("issend[%d]=1,haven_write_len[%d] =%d,<br>",i,i,haven_write_len[i]);
+					//printf("issend[%d]=1,haven_write_len[%d] =%d,<br>",i,i,haven_write_len[i]);
 					strcpy(temp,mes_buf[i]);
 
 					haven_write_len[i] += write(Ssockfd[i], &temp[haven_write_len[i]],strlen(mes_buf[i]));
@@ -301,22 +301,22 @@ int main(int argc, char* argv[],char *envp[]){
 				else {//no data need to send, so read file command
 					bzero(mes_buf[i], BUF_LEN);
 					if( (ready_write_len[i] = readfile(fp[i],mes_buf[i]) ) <= 0 ){
-						printf("read the end of file[%d] ,exit<br>",i);
-						/*host_num--;
+						//printf("read the end of file[%d] ,exit<br>",i);
+						host_num--;
 						FD_CLR(Ssockfd[i],&rs);
 						FD_CLR(Ssockfd[i],&ws);
 						close(Ssockfd[i]);
 						fclose(fp[i]);
-						Ssockfd[i] = 0;*/
+						Ssockfd[i] = 0;
 						continue;
 					}
 					else if( ready_write_len[i] > 0 ){
-						printf("1.ready_write_len[%d]=%d<br>",i,ready_write_len[i]);
+						//printf("1.ready_write_len[%d]=%d<br>",i,ready_write_len[i]);
 						haven_write_len[i] = 0;
 						haven_write_len[i] += write(Ssockfd[i], mes_buf[i],strlen(mes_buf[i]));
-						printf("1.haven_write_len[%d]=%d<br>",i,haven_write_len[i]);
+						//printf("1.haven_write_len[%d]=%d<br>",i,haven_write_len[i]);
 						if(ready_write_len[i] <= haven_write_len[i]){
-							printf("send finish[%d]<br>",i);
+							//printf("send finish[%d]<br>",i);
 							issend[i]=0;
 							ready_write_len[i] = 0;
 							haven_write_len[i] = 0;

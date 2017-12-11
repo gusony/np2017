@@ -222,6 +222,11 @@ int main(int argc, char* argv[],char *envp[]){
     //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7790&f1=t6.txt&h2=&p2=&f2=&h3=&p3=&f3=&h4=&p4=&f4=&h5=&p5=&f5=");
 
 	cut_url(query);
+	/*for(int k=0;k<5;k++){
+		//modifty code 3
+		strcpy(ip[k],"140.113.167.44");
+		strcpy(port[k], "9996");
+	}*/
 	gen_html();
 
 	// connect to server

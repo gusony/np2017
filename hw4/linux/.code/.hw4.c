@@ -15,10 +15,13 @@
 #include <fcntl.h>
 
 #define HOST_LEN 50
-#define PORT_FILE_LEN 10
+#define PORT_LEN 10
+#define FILE_LEN 10
 #define URL_LEN 2000
 #define BUF_LEN 40000
 #define MAX_CLI_NUM 5
+
+#define BUFFER_SIZE 10240
 
 const char *error_file = "Error : '%s' doesn't exist<br>";
 
@@ -26,9 +29,14 @@ typedef enum {
 	F_READ,
 	F_WRITE,
 }status_code;
+char buffer[BUFFER_SIZE];
 
+char ip       [MAX_CLI_NUM][HOST_LEN];
+char port     [MAX_CLI_NUM][PORT_LEN];
+char file     [MAX_CLI_NUM][FILE_LEN];
+char proxyip  [MAX_CLI_NUM][HOST_LEN];
+char proxyport[MAX_CLI_NUM][PORT_LEN];
 
-char ip[MAX_CLI_NUM][HOST_LEN], port[5][PORT_FILE_LEN], file[5][PORT_FILE_LEN];
 FILE *fp[MAX_CLI_NUM];
 
 void replace_special_char(char *mes_buf){
@@ -66,7 +74,6 @@ int readline(int fd, char *ptr, int maxlen){// read from file
 
     for(n=0; n<maxlen;n++){
         if((rc=read(fd, &c, 1))==1){
-        	//printf("%c<br>",c);
             if(c=='\0')
                 break;
             *ptr++ = c;
@@ -81,48 +88,83 @@ int readline(int fd, char *ptr, int maxlen){// read from file
     *ptr = 0;
     return(strlen(ptr));//string length
 }
-int readfile(FILE *fp,char *mes_buf){//return strlen
-	int len=0,t;
-	char c[BUF_LEN];
-	bzero(c, sizeof(c));
-	if(fgets(c, sizeof(c), fp) == NULL)
+int readfile(FILE *fp,char *mes_buf){//return strlen or 0
+	if(fgets(mes_buf, sizeof(char)*100, fp) == NULL)
 		return(0);
-
-	/*while(c[strlen(c)] == 0 && c[strlen(c)-1] == 10 && c[strlen(c)-2] == 32){
-    	t = strlen(c);
-    	c[t-1] =0;
-    	c[t-2] =10;
-    }*/
-	strcpy(mes_buf, c);
-	len = strlen(c);
-	return(len);
+	return(strlen(mes_buf));
 }
-int connect_to_server(int i){//return fd
-	struct hostent *he;
-	struct sockaddr_in client_sin;
+int connect_to_server(int i){//successful return fd, fail return 0
+	struct hostent *server_he;
+	struct hostent *proxy_he;
+	struct sockaddr_in server_in; bzero(&server_in,sizeof(server_in));
+	struct sockaddr_in proxy_in;  bzero(&proxy_in, sizeof(proxy_in));
 	int    client_fd;
 	int one = 1;
 
 	if(ip[i][0]=='\0' || port[i][0]=='\0' || file[i][0]=='\0')
 		return(0);
 
-
-	he=gethostbyname(ip[i]);
-	client_fd = socket(AF_INET,SOCK_STREAM,0);
-	bzero(&client_sin,sizeof(client_sin));
-	client_sin.sin_family = AF_INET;
-	client_sin.sin_addr = *((struct in_addr *)he->h_addr);
-	client_sin.sin_port = htons((u_short)atoi(port[i]));
-	if(connect(client_fd,(struct sockaddr *)&client_sin,sizeof(client_sin)) == -1){
-		printf("<script>document.all['m%d'].innerHTML += \"connect error<br>\";</script>",i);
+	if((client_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
+		printf("<script>document.all['m%d'].innerHTML += \"socket error<br>\";</script>",i);
+		return(0);
 	}
 
-	//int flag = fcntl(client_fd, F_GETFL, 0);
-	//fcntl(client_fd, F_SETFL, flag | O_NONBLOCK);
-
-	if (ioctl(client_fd, FIONBIO, (char *)&one))
+	int flag = fcntl(client_fd, F_GETFL, 0);
+	fcntl(client_fd, F_SETFL, flag | O_NONBLOCK);
+	/*if (ioctl(client_fd, FIONBIO, (char *)&one)){ //set non-blocking error
 		printf("<script>document.all['m%d'].innerHTML += \"can't mark socket nonblocking<br>\";</script>",i);
+		return(0);
+	}*/
 
+	if((server_he=gethostbyname(ip[i])) == NULL )//get service ip error
+		printf("<script>document.all['m%d'].innerHTML += \"gethostbyname error<br>\";</script>",i);
+
+	server_in.sin_family = AF_INET;
+	server_in.sin_addr = *((struct in_addr *)server_he->h_addr);
+	server_in.sin_port = htons((u_short)atoi(port[i]));
+
+	if(proxyip[i][0] !='\0' && proxyport[i][0]!='\0' ){//proxy
+		printf("%s,%s<br>",proxyip[i],proxyport[i]);
+		if((proxy_he=gethostbyname(proxyip[i])) == NULL ){//get proxy ip error
+			printf("<script>document.all['m%d'].innerHTML += \"proxy gethostbyname error<br>\";</script>",i);
+			return(0);
+		}
+		proxy_in.sin_family = AF_INET;
+		proxy_in.sin_addr = *((struct in_addr *)proxy_he->h_addr);
+		proxy_in.sin_port = htons((u_short)atoi(proxyport[i]));
+
+		if(connect(client_fd,(struct sockaddr *)&proxy_in,sizeof(proxy_in)) == -1){//connect proxy error
+			if(errno != EINPROGRESS){
+				printf("<script>document.all['m%d'].innerHTML += \"proxy connect error<br>\";</script>",i);
+				return(0);
+			}
+		}
+
+		buffer[0] = 4;
+		buffer[1] = 1;
+		buffer[2] = (atoi(port[i]) / 256) & 0xff;
+		buffer[3] = (atoi(port[i]) % 256) & 0xff;
+		buffer[4] = (server_in.sin_addr.s_addr) & 0xff;
+		buffer[5] = (server_in.sin_addr.s_addr >> 8) & 0xff;
+		buffer[6] = (server_in.sin_addr.s_addr >> 16) & 0xff;;
+		buffer[7] = (server_in.sin_addr.s_addr >> 24) & 0xff;
+		buffer[8] = 0;
+		buffer[9] = 0;
+		//printf("%d,2:%d,3:%d,4:%d,5:%d,6:%d,7%s<br>",i,buffer[2],buffer[3],buffer[4],buffer[5],buffer[6],buffer[7]);
+
+		while(write(client_fd, buffer, 9) <= 0);//wait send finish
+		while(read(client_fd, buffer, 8) <= 0); //wait read finish
+		if(buffer[0] != 0 || buffer[1] != 90){
+			printf("<script>document.all['m%d'].innerHTML += \"socks reply error<br>\";</script>",i);
+			return(0);
+		}
+	}
+	else{//no proxy
+		if(connect(client_fd,(struct sockaddr *)&server_in,sizeof(server_in)) == -1){
+			printf("<script>document.all['m%d'].innerHTML += \"connect error<br>\";</script>",i);
+			//return(0);
+		}
+	}
 	return (client_fd);
 }
 void gen_html(void){
@@ -155,15 +197,16 @@ void gen_html(void){
 	fflush(stdout);
 }
 void cut_url(char *buff){
-	char temp[15][HOST_LEN];
+	char temp[25][HOST_LEN];
 	int i = 0, j = 0;
 
 	//init all char array
 	for(i=0; i<5; i++){
-		bzero(ip[i],  sizeof(ip[i]));
-		bzero(port[i],sizeof(port[i]));
-		bzero(file[i],sizeof(file[i]));
-		//write_count[i]=0;
+		bzero(ip[i],       sizeof(ip[i]));
+		bzero(port[i],     sizeof(port[i]));
+		bzero(file[i],     sizeof(file[i]));
+		bzero(proxyip[i],  sizeof(proxyip[i]));
+		bzero(proxyport[i],sizeof(proxyport[i]));
 	}
 
 	//cut by "&"
@@ -175,21 +218,28 @@ void cut_url(char *buff){
 	}
 
 	//cut by "="
-	for(i=0; i<15; i++){
+	for(i=0; i<25; i++){
 		t = strtok(temp[i],"=");
 		t = strtok(NULL,"=");
-		if(t != NULL){
-			switch (i % 3){
-				case 0:
-					strcpy(ip[j],t);
-					break;
-				case 1:
-					strcpy(port[j],t);
-					break;
-				case 2:
-					strcpy(file[j++],t);
-					break;
-			}
+		if (t == NULL)
+			continue;
+
+		switch (i % 5){
+			case 0:
+				strcpy(ip[j],t);
+				break;
+			case 1:
+				strcpy(port[j],t);
+				break;
+			case 2:
+				strcpy(file[j],t);
+				break;
+			case 3:
+				strcpy(proxyip[j],t);
+				break;
+			case 4:
+				strcpy(proxyport[j++],t);
+				break;
 		}
 	}
 }
@@ -219,14 +269,9 @@ int main(int argc, char* argv[],char *envp[]){
 
 	char query[URL_LEN];
     strcpy(query , getenv("QUERY_STRING") );
-    //strcpy(query,"h1=nplinux1.cs.nctu.edu.tw&p1=7790&f1=t6.txt&h2=&p2=&f2=&h3=&p3=&f3=&h4=&p4=&f4=&h5=&p5=&f5=");
+    //strcpy(query,"?h1=nplinux1.cs.nctu.edu.tw&p1=7780&f1=t1.txt&sh1=p1&sp1=pp1&h2=nplinux1.cs.nctu.edu.tw&p2=7780&f2=t5.txt&sh2=p2&sp2=pp2&h3=nplinux1.cs.nctu.edu.tw&p3=7780&f3=t3.txt&sh3=p3&sp3=pp3&h4=nplinux1.cs.nctu.edu.tw&p4=7780&f4=t5.txt&sh4=p4&sp4=pp4&h5=nplinux1.cs.nctu.edu.tw&p5=7780&f5=t6.txt&sh5=p5&sp5=pp5");
 
 	cut_url(query);
-	/*for(int k=0;k<5;k++){
-		//modifty code 3
-		strcpy(ip[k],"140.113.167.44");
-		strcpy(port[k], "9996");
-	}*/
 	gen_html();
 
 	// connect to server
@@ -234,16 +279,16 @@ int main(int argc, char* argv[],char *envp[]){
 		Ssockfd[i] = connect_to_server(i);
 		if(Ssockfd[i] > 0){
 			host_num++;
-			nfds=Ssockfd[i]+1;
+			nfds = Ssockfd[i]+1>nfds? Ssockfd[i]+1:nfds;
 			FD_SET(Ssockfd[i],&rs);
 			FD_SET(Ssockfd[i],&ws);
-			sprintf(mes_buf[i], error_file ,file[i]);
-
-			if ((fp[i] = fopen(file[i], "r")) == NULL){//fp[i] = fopen(file[i], "r");
+			status[i] = F_READ;
+			if ((fp[i] = fopen(file[i], "r")) == NULL){
+				sprintf(mes_buf[i], error_file ,file[i]);
 				print_to_html(i,mes_buf[i]);
 			}
-			status[i] = F_READ;
 		}
+
 	}
 
 	while(host_num){
@@ -275,7 +320,6 @@ int main(int argc, char* argv[],char *envp[]){
 				}
 
 				if(strstr(mes_buf[i], "% ")!=NULL ){
-					//printf("find %%_<br>");
 					status[i] = F_WRITE;
 					FD_CLR(Ssockfd[i], &rs);
 					FD_SET(Ssockfd[i], &ws);
@@ -288,7 +332,6 @@ int main(int argc, char* argv[],char *envp[]){
 				}
 			}
 			else if(FD_ISSET(Ssockfd[i], &wfds) && status[i] == F_WRITE ){//write to server
-				//printf("issend[%d]=%d,read=%d,have=%d<br>",i,issend[i],ready_write_len[i],haven_write_len[i]);
 				if(issend[i]==1 && ready_write_len[i] > 0){//still have date need to send
 					if(ready_write_len[i] <= haven_write_len[i]){
 						issend[i]=0;
@@ -306,7 +349,6 @@ int main(int argc, char* argv[],char *envp[]){
 				else {//no data need to send, so read file command
 					bzero(mes_buf[i], BUF_LEN);
 					if( (ready_write_len[i] = readfile(fp[i],mes_buf[i]) ) <= 0 ){
-						//printf("read the end of file[%d] ,exit<br>",i);
 						host_num--;
 						FD_CLR(Ssockfd[i],&rs);
 						FD_CLR(Ssockfd[i],&ws);
@@ -316,10 +358,8 @@ int main(int argc, char* argv[],char *envp[]){
 						continue;
 					}
 					else if( ready_write_len[i] > 0 ){
-						//printf("1.ready_write_len[%d]=%d<br>",i,ready_write_len[i]);
 						haven_write_len[i] = 0;
 						haven_write_len[i] += write(Ssockfd[i], mes_buf[i],strlen(mes_buf[i]));
-						//printf("1.haven_write_len[%d]=%d<br>",i,haven_write_len[i]);
 						if(ready_write_len[i] <= haven_write_len[i]){
 							//printf("send finish[%d]<br>",i);
 							issend[i]=0;
@@ -339,3 +379,15 @@ int main(int argc, char* argv[],char *envp[]){
 	}
     return (0);
 }
+
+/*int readfile(FILE *fp,char *mes_buf){//return strlen
+	int len=0,t;
+	char c[BUF_LEN];
+	bzero(c, sizeof(c));
+	if(fgets(c, sizeof(c), fp) == NULL)
+		return(0);
+
+	strcpy(mes_buf, c);
+	len = strlen(c);
+	return(len);
+}*/

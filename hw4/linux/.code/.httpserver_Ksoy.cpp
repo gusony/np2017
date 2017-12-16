@@ -77,25 +77,25 @@ int setSocket(char *port)
 {
 	int fd;
 	struct sockaddr_in server_addr;
-	
+
 	//set socket
 	if((fd = socket(PF_INET, SOCK_STREAM, 6)) < 0)
 		errexit("server: can't open stream socket : %s\n", strerror(errno));
-	
+
 	//init server addr
 	bzero(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(atoi(port));
 	server_addr.sin_addr.s_addr = INADDR_ANY;
-	
+
 	//bind socket
 	if(bind(fd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0)
 		errexit("server: can't bind local address : %s\n", strerror(errno));
-	
+
 	//listen socket
 	listen(fd, CLIENT_NUMBERS);
 	printf("server: server port is %s. \n", port);
-	
+
 	return fd;
 }
 
@@ -111,7 +111,7 @@ void client_handler(int sockfd)
 
 	char msg[CMDS_SIZE][BUFFER_SIZE];
 	int msgc;
-	
+
 	split(msg, msgc, buffer, "\n");
 	strcpy(buffer, msg[0]);
 	split(msg, msgc, buffer, " ");
@@ -120,7 +120,7 @@ void client_handler(int sockfd)
 	{
 		strcpy(buffer, msg[1]);
 		split(msg, msgc, buffer, "?");
-		if(endWith(msg[0], ".html"))
+		if(endWith(msg[0], ".htm"))
 		{
 			FILE *f = fopen(msg[0] + 1, "r");
 			if(f != NULL)
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]){
 	//if user give port
 	if(argc == 2)
 		strcpy(port, argv[1]);
-	
+
 	//set socket
 	sockfd = setSocket(port);
 
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]){
 		//wait client connect
 		if((newsockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len)) < 0)
 			errexit("server: accept error : %s\n", strerror(errno));
-		
+
 		//fork child to handle client
 		if((childpid = fork()) < 0)
 			errexit("server: fork error : %s\n", strerror(errno));

@@ -55,7 +55,7 @@ int readline(int fd, char *ptr, int maxlen)
 	{
 		if((rc=read(fd,&c,1)) == 1)
 		{
-			*ptr++ = c;	
+			*ptr++ = c;
 			if(c==' '&& *(ptr-2) =='%'){  break; }
 			if(c=='\n')  break;
 		}
@@ -68,7 +68,7 @@ int readline(int fd, char *ptr, int maxlen)
 			return -1;
 	}
 	return n;
-}  
+}
 
 void appendMsg(const char *name, const char *msg, bool isCmd = false)
 {
@@ -77,7 +77,7 @@ void appendMsg(const char *name, const char *msg, bool isCmd = false)
 	string temp;
 
 	split(arr, c, msg, "\n");
-	
+
 	for(int i=0;i<c;++i)
 	{
 		temp = string(arr[i]);
@@ -86,7 +86,7 @@ void appendMsg(const char *name, const char *msg, bool isCmd = false)
 		while((pt = temp.find('>')) != string::npos)
 			temp.replace(pt,1,"&gt;");
 		strcpy(arr[i], temp.data());
-		
+
 		if(isCmd)
 		{
 			arr[i][strlen(arr[i])-1] = 0;
@@ -194,7 +194,7 @@ int connect(const char *host, const char *port, string proxyHost, string proxyPo
 		if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0)
 			if(errno != EINPROGRESS)
 				errexit("ERROR: connecting");
-	
+
 		return 1;
 	}
 	return -1;
@@ -229,13 +229,13 @@ int main(int argc, char **argv)
 	map<string, string> paras;
 	initPara(paras);
 	printOriHtml();
-    
+
 	char fileDir[BUFFER_SIZE];
 	FILE *files[CLIENT_NUMBER];
 	int clients[CLIENT_NUMBER];
 	bool isExit[CLIENT_NUMBER] = {false, false, false, false, false};
 	int conn = 0, n;
-    
+
 	//open file
 	for(int i=0;i<CLIENT_NUMBER;++i)
 	{
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
 		{
 			strcpy(temp, paras[formHostName[i]].data());
 			strcat(temp, ":");
-			
+
 			if(!paras[formPortName[i]].empty())
 			{
 				strcat(temp, paras[formPortName[i]].data());
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 			appendMsg(formHostName[i].data(), temp);
 		}
 	}
- 
+
 	//stupid
 	for(int i=0; i<CLIENT_NUMBER; ++i)
 	{
@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 		if(paras[formFileName[i]].empty())
 			appendMsg(formTextName[i].data(), "File is not exist");
 	}
- 
+
 	fd_set rfds, wfds, rs, ws;
 	int nfds = FD_SETSIZE;
 	int error;
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
 	FD_ZERO(&wfds);
 	FD_ZERO(&rs);
 	FD_ZERO(&ws);
-	
+
 	for(int i=0; i<CLIENT_NUMBER; ++i)
 		if(clients[i] != -1)
 		{
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
 					status[i] == F_DONE;
 					continue;
 				}
-				
+
 				if(strstr(buffer, "exit") != NULL) isExit[i] = true;
 
 				appendMsg(formTextName[i].data(), buffer, true);
@@ -381,5 +381,5 @@ int main(int argc, char **argv)
 
 	}//end while
 
-	return 0;	
+	return 0;
 }

@@ -213,13 +213,19 @@ void client_handler(int browserfd){
 		fprintf(stderr,"cleint%lu: fail ip\n", pid);
 		return;
 	}
-	request[0] = 0;
-	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
 
 	//show message
-	printf("client%lu: REQUEST: VN=%d, CD=%d, DST_IP=%u.%u.%u.%u, DST_PORT=%u, ID=%s\n", pid, sr->vn, sr->cd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3], sr->port, sr->id);
-	printf("client%lu: REQUEST: mode=%s, reply=%s\n", pid, ((sr->cd == 0x01)? "CONNECT" : "BIND"), ((request[1] == 90)? "ACCEPT" : "REJECT"));
+	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
+	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
+	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
+	printf("client%d: <Reply>  :%s\n", browserfd, ((request[1] == 90)? "ACCEPT" : "REJECT"));
+	printf("client%d: <Content>:",browserfd);
+	for (int k=0; k<n ;k++)
+		printf("0x%X, ",sr->id[k]);
+	printf("\n");
 
+	request[0] = 0;
+	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
 	if(request[1] == 91){
 		write(browserfd, request, 8);
 		return;
@@ -464,7 +470,8 @@ int main (int argc, char *argv[], char **envp){
 		else if(childpid == 0) //child
 		{
 			close(serverfd);
-			printf("client%lu: FROM: ip=%s, port=%s\n", getpid(), cip, cport);
+			printf("client%d: <S_IP>   :=%s\n", newsockfd, cip);
+			printf("client%d: <S_PORT> :=%s\n", newsockfd, cport);
 			client_handler(newsockfd);
 			close(newsockfd);
 			printf("server: client %d exit\n", getpid());

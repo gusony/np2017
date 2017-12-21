@@ -220,7 +220,7 @@ void client_handler(int browserfd){
 	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
 	printf("client%d: <Reply>  :%s\n", browserfd, ((request[1] == 90)? "ACCEPT" : "REJECT"));
 	printf("client%d: <Content>:",browserfd);
-	for (int k=0; k<n ;k++)
+	for (int k=0; k< ((n<10)?n:10) ;k++)
 		printf("0x%X, ",sr->id[k]);
 	printf("\n");
 
@@ -409,7 +409,7 @@ void client_handler(int browserfd){
 				{
 					n = write(ftpfd, buffer, n);
 					//buffer[10] = 0;
-					printf("client%lu: browser send: %s\n", pid, buffer);
+					//printf("client%lu: browser send: %s\n", pid, buffer);
 				}
 			}
 			else if(FD_ISSET(ftpfd, &rfds))
@@ -426,7 +426,7 @@ void client_handler(int browserfd){
 				{
 					n = write(browserfd, buffer, n);
 					//buffer[10] = 0;
-					printf("client%lu: ftp send=%s\n", pid, buffer);
+					//printf("client%lu: ftp send=%s\n", pid, buffer);
 				}
 			}
 		}

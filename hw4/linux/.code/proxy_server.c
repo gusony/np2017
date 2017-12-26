@@ -66,7 +66,7 @@ typedef struct {
 }sock4r;
 
 
-char port[5] = "7575";
+char port[5] = "7657";
 char buffer[BUFFER_SIZE];
 int n;
 int isTimeout = 0;
@@ -147,7 +147,7 @@ void alarmHandler(int signal){
 }
 int checkFirewall(sock4r *sr){
 	FILE *f = fopen("socks.conf", "r");
-	char *mes = malloc(sizeof(char)*100);
+	char *mes = (char*)malloc(sizeof(char)*100);
 	char firewall[3][100];
 	char permitIP[4][4];
 	char *t = NULL;
@@ -190,7 +190,7 @@ void client_handler(int browserfd){
 	unsigned long pid = getpid();
 	char cmd[CMD_LENGTH];
 	int cmdLength;
-	sock4r *sr = malloc(sizeof(sock4r));  bzero(sr, sizeof(sock4r));
+	sock4r *sr = (sock4r*)malloc(sizeof(sock4r));  bzero(sr, sizeof(sock4r));
 	unsigned char request[8];
 
 	n = read(browserfd, &request, 8);
@@ -206,22 +206,27 @@ void client_handler(int browserfd){
 	sr->ip[2] = request[6];
 	sr->ip[3] = request[7];
 
-	n = realine(browserfd, sr->id, BUFFER_SIZE-1);
+	n = readall(browserfd, sr->id, BUFFER_SIZE-1);
 
 
 	if(!sr->ip[0] && !sr->ip[1] && !sr->ip[2]){
 		fprintf(stderr,"cleint%lu: fail ip\n", pid);
 		return;
 	}
-	request[0] = 0;
-	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
 
 	//show message
-	printf("client%lu: REQUEST: VN=%d, CD=%d, DST_IP=%u.%u.%u.%u, DST_PORT=%u, ID=%s\n", pid, sr->vn, sr->cd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3], sr->port, sr->id);
-	printf("client%lu: REQUEST: mode=%s, reply=%s\n", pid, ((sr->cd == 0x01)? "CONNECT" : "BIND"), ((request[1] == 90)? "ACCEPT" : "REJECT"));
+	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
+	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
+	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
+	printf("client%d: <Reply>  :%s\n", browserfd, ((request[1] == 90)? "ACCEPT" : "REJECT"));
+	printf("client%d: <Content>:",browserfd);
+	for (int k=0; k< ((n<10)?n:10) ;k++)
+		printf("0x%X, ",sr->id[k]);
+	printf("\n");
 
-	if(request[1] == 91)
-	{
+	request[0] = 0;
+	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
+	if(request[1] == 91){
 		write(browserfd, request, 8);
 		return;
 	}
@@ -229,8 +234,204 @@ void client_handler(int browserfd){
 	signal(SIGALRM, alarmHandler);
 
 	if(sr->cd == 0x01){//connect mode
-	}
-	else if(sr->cd == 0x02){//bind mode
+		//reply
+		write(browserfd, request, 8);
+
+		int webfd;
+		struct sockaddr_in webaddr;
+
+		if((webfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+			printf("client%lu: create socket fail\n", pid);
+			return;
+		}
+
+		bzero((char*)&webaddr, sizeof(webaddr));
+		webaddr.sin_family = AF_INET;
+		webaddr.sin_port = htons(sr->port);
+		webaddr.sin_addr.s_addr = (sr->ip[3]&0xff)*256*256*256 + (sr->ip[2]&0xff)*256*256 + (sr->ip[1]&0xff)*256 + (sr->ip[0]&0xff);
+
+		if(connect(webfd, (struct sockaddr*)&webaddr, sizeof(webaddr)) < 0){
+			printf("client%lu: connect web error %d,%s\n", pid, errno, strerror(errno));
+			return;
+		}
+
+		int nfds = ((browserfd < webfd) ? webfd : browserfd ) + 1;
+		fd_set rfds, afds;
+		int isConnect = 2;
+
+		FD_ZERO(&afds);
+		FD_SET(browserfd, &afds);
+		FD_SET(webfd, &afds);
+
+		while(isConnect && !isTimeout)
+		{
+			alarm(TIME_OUT);
+			FD_ZERO(&rfds);
+			memcpy(&rfds, &afds, sizeof(rfds));
+
+			if(select(nfds, &rfds, NULL, NULL, NULL) < 0)
+			{
+				if(isTimeout)
+					close(webfd);
+				else
+					printf("client%lu: select error \n", pid);
+				return;
+			}
+
+			if(FD_ISSET(browserfd, &rfds))
+			{
+				memset(buffer, 0, BUFFER_SIZE);
+				n = read(browserfd, buffer, BUFFER_SIZE - 1);
+				if(n <= 0)
+				{
+					printf("client%lu: browser over\n", pid);
+					FD_CLR(browserfd, &afds);
+					isConnect--;
+				}
+				else
+					n = write(webfd, buffer, n);
+
+			}
+			else if(FD_ISSET(webfd, &rfds))
+			{
+				memset(buffer, 0, BUFFER_SIZE);
+				n = read(webfd, buffer, BUFFER_SIZE - 1);
+				if(n <= 0)
+				{
+					printf("client%lu: web over\n", pid);
+					FD_CLR(webfd, &afds);
+					isConnect--;
+				}
+				else
+				{
+					n = write(browserfd, buffer, n);
+					buffer[10] = 0;
+					//printf("client%lu: web receive=%s\n", pid, buffer);
+				}
+			}
+		}
+		close(webfd);
+	}//end connect
+	else if(sr->cd == 0x02)//bind mode
+	{
+		int bindfd, ftpfd;
+		struct sockaddr_in bindaddr, ftpaddr, tmpaddr;
+		int len;
+
+		if((bindfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		{
+			printf("client%lu: create socket fail\n", pid);
+			return;
+		}
+
+		bzero((char*)&bindaddr, sizeof(bindaddr));
+		bindaddr.sin_family = AF_INET;
+		bindaddr.sin_port = htons(INADDR_ANY);
+		bindaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+		//bind socket
+		if(bind(bindfd, (struct sockaddr*)&bindaddr, sizeof(bindaddr)) < 0)
+		{
+			printf("client%lu: bind socket fail\n", pid);
+			return;
+		}
+
+		//get bind port
+		len = sizeof(tmpaddr);
+		if(getsockname(bindfd, (struct sockaddr *)&tmpaddr, (socklen_t*)&len) < 0)
+		{
+			printf("client%lu: getsockname fail\n", pid);
+			return;
+		}
+
+		//listen
+		if(listen(bindfd, 5) < 0)
+		{
+			printf("client%lu: listen fail\n");
+			return;
+		}
+
+		//reply
+		request[2] = (ntohs(tmpaddr.sin_port) / 256) & 0xff;
+		request[3] = (ntohs(tmpaddr.sin_port) % 256) & 0xff;
+		request[4] = 0;
+		request[5] = 0;
+		request[6] = 0;
+		request[7] = 0;
+
+		write(browserfd, request, 8);
+
+		//wait connect
+		len = sizeof(ftpaddr);
+		if((ftpfd = accept(bindfd, (struct sockaddr*)&ftpaddr, (socklen_t*)&len)) < 0)
+		{
+			printf("client%lu: accept fail\n", pid);
+			return;
+		}
+
+		printf("client%lu: BIND SUCCESS\n", pid);
+		write(browserfd, request, 8);
+
+		int nfds = ((browserfd < ftpfd) ? ftpfd : browserfd ) + 1;
+		fd_set rfds, afds;
+		int isConnect = 2;
+
+		FD_ZERO(&afds);
+		FD_SET(browserfd, &afds);
+		FD_SET(ftpfd, &afds);
+
+		while(isConnect && !isTimeout)
+		{
+			alarm(TIME_OUT);
+			FD_ZERO(&rfds);
+			memcpy(&rfds, &afds, sizeof(rfds));
+
+			if(select(nfds, &rfds, NULL, NULL, NULL) < 0)
+			{
+				if(isTimeout)
+					close(ftpfd);
+				else
+					printf("client%lu: select error \n", pid);
+				return;
+			}
+
+			if(FD_ISSET(browserfd, &rfds))
+			{
+				memset(buffer, 0, BUFFER_SIZE);
+				n = read(browserfd, buffer, BUFFER_SIZE - 1);
+				if(n <= 0)
+				{
+					//printf("client%lu: browser over\n", pid);
+					//FD_CLR(browserfd, &afds);
+					//isConnect--;
+				}
+				else
+				{
+					n = write(ftpfd, buffer, n);
+					//buffer[10] = 0;
+					//printf("client%lu: browser send: %s\n", pid, buffer);
+				}
+			}
+			else if(FD_ISSET(ftpfd, &rfds))
+			{
+				memset(buffer, 0, BUFFER_SIZE);
+				n = read(ftpfd, buffer, BUFFER_SIZE - 1);
+				if(n <= 0)
+				{
+					//printf("client%lu: ftp over\n", pid);
+					//FD_CLR(ftpfd, &afds);
+					//isConnect--;
+				}
+				else
+				{
+					n = write(browserfd, buffer, n);
+					//buffer[10] = 0;
+					//printf("client%lu: ftp send=%s\n", pid, buffer);
+				}
+			}
+		}
+		close(ftpfd);
+
 	}
 	return;
 
@@ -240,6 +441,7 @@ int main (int argc, char *argv[], char **envp){
 	struct sockaddr_in client_addr;
 	char cip[IP_LENGTH];
 	char cport[PORT_LENGTH];
+	int clilen = 0;
 
 	printf("server: server starting...\n");
 
@@ -256,9 +458,9 @@ int main (int argc, char *argv[], char **envp){
 		printf("server: server is waiting...\n");
 
 		//wait client connect
-		if((newsockfd = accept(serverfd, (struct sockaddr*)&client_addr, (socklen_t *)sizeof(client_addr))) < 0)//client_len = sizeof(client_addr);
+		clilen = sizeof(client_addr);
+		if((newsockfd = accept(serverfd, (struct sockaddr*)&client_addr,(socklen_t *) &clilen)) < 0)
 			fprintf(stderr,"server: accept error : %s\n", strerror(errno));
-
 		strcpy(cip, inet_ntoa(client_addr.sin_addr));
 		sprintf(cport, "%u", client_addr.sin_port);
 
@@ -268,7 +470,8 @@ int main (int argc, char *argv[], char **envp){
 		else if(childpid == 0) //child
 		{
 			close(serverfd);
-			printf("client%lu: FROM: ip=%s, port=%s\n", getpid(), cip, cport);
+			printf("client%d: <S_IP>   :=%s\n", newsockfd, cip);
+			printf("client%d: <S_PORT> :=%s\n", newsockfd, cport);
 			client_handler(newsockfd);
 			close(newsockfd);
 			printf("server: client %d exit\n", getpid());

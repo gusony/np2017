@@ -214,6 +214,15 @@ void client_handler(int browserfd){
 		return;
 	}
 
+	
+
+	request[0] = 0;
+	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
+	if(request[1] == 91){
+		write(browserfd, request, 8);
+		return;
+	}
+	
 	//show message
 	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
 	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
@@ -223,13 +232,6 @@ void client_handler(int browserfd){
 	for (int k=0; k< ((n<10)?n:10) ;k++)
 		printf("0x%X, ",sr->id[k]);
 	printf("\n");
-
-	request[0] = 0;
-	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
-	if(request[1] == 91){
-		write(browserfd, request, 8);
-		return;
-	}
 
 	signal(SIGALRM, alarmHandler);
 

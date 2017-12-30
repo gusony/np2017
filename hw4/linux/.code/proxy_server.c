@@ -182,6 +182,7 @@ int checkFirewall(sock4r *sr){
 
 		return (1);
 	}
+	fclose(f);
 	return (0);
 }
 void client_handler(int browserfd){
@@ -214,7 +215,7 @@ void client_handler(int browserfd){
 		return;
 	}
 
-	
+
 
 	request[0] = 0;
 	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
@@ -222,7 +223,7 @@ void client_handler(int browserfd){
 		write(browserfd, request, 8);
 		return;
 	}
-	
+
 	//show message
 	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
 	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);

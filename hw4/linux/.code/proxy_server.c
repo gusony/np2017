@@ -179,13 +179,13 @@ int checkFirewall(sock4r *sr){
 		if(permitIP[1][0] != '*' && atoi(permitIP[1]) != sr->ip[1]) continue;
 		if(permitIP[2][0] != '*' && atoi(permitIP[2]) != sr->ip[2]) continue;
 		if(permitIP[3][0] != '*' && atoi(permitIP[3]) != sr->ip[3]) continue;
-
+		fclose(f);
 		return (1);
 	}
 	fclose(f);
 	return (0);
 }
-void client_handler(int browserfd){
+void client_handler(int browserfd, char *cip, char *cport){
 	alarm(TIME_OUT);
 
 	unsigned long pid = getpid();
@@ -219,12 +219,11 @@ void client_handler(int browserfd){
 
 	request[0] = 0;
 	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
-	if(request[1] == 91){
-		write(browserfd, request, 8);
-		return;
-	}
+
 
 	//show message
+	printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
+	printf("client%d: <S_PORT> :=%s\n", browserfd, cport);
 	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
 	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
 	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
@@ -233,6 +232,11 @@ void client_handler(int browserfd){
 	for (int k=0; k< ((n<10)?n:10) ;k++)
 		printf("0x%X, ",sr->id[k]);
 	printf("\n");
+
+	if(request[1] == 91){
+		write(browserfd, request, 8);
+		return;
+	}
 
 	signal(SIGALRM, alarmHandler);
 
@@ -473,9 +477,7 @@ int main (int argc, char *argv[], char **envp){
 		else if(childpid == 0) //child
 		{
 			close(serverfd);
-			printf("client%d: <S_IP>   :=%s\n", newsockfd, cip);
-			printf("client%d: <S_PORT> :=%s\n", newsockfd, cport);
-			client_handler(newsockfd);
+			client_handler(newsockfd,cip,cport);
 			close(newsockfd);
 			printf("server: client %d exit\n", getpid());
 			return 0;

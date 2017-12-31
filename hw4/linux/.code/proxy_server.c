@@ -179,10 +179,9 @@ int checkFirewall(sock4r *sr){
 		if(permitIP[1][0] != '*' && atoi(permitIP[1]) != sr->ip[1]) continue;
 		if(permitIP[2][0] != '*' && atoi(permitIP[2]) != sr->ip[2]) continue;
 		if(permitIP[3][0] != '*' && atoi(permitIP[3]) != sr->ip[3]) continue;
-		fclose(f);
+
 		return (1);
 	}
-	fclose(f);
 	return (0);
 }
 void client_handler(int browserfd, char *cip, char *cport){
@@ -195,10 +194,12 @@ void client_handler(int browserfd, char *cip, char *cport){
 	unsigned char request[8];
 
 	n = read(browserfd, &request, 8);
+	printf("request:[%d %d %d %d %d %d %d %d]\n",request[0],request[1],request[2],request[3],request[4],request[5],request[6],request[7]);
 	if (n != 8 || request[0] != 0x04 || (request[1] != 0x01 && request[1] != 0x02)) {
 		printf("client%lu: not socks4 request %d\n", pid, sr->vn);
 		return;
 	}
+
 	sr->vn = request[0];
 	sr->cd = request[1];
 	sr->port = (request[2] & 0xff) * 256 + (request[3] & 0xff);
@@ -206,7 +207,6 @@ void client_handler(int browserfd, char *cip, char *cport){
 	sr->ip[1] = request[5];
 	sr->ip[2] = request[6];
 	sr->ip[3] = request[7];
-
 	n = readall(browserfd, sr->id, BUFFER_SIZE-1);
 
 
@@ -215,11 +215,8 @@ void client_handler(int browserfd, char *cip, char *cport){
 		return;
 	}
 
-
-
 	request[0] = 0;
 	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
-
 
 	//show message
 	printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
@@ -232,6 +229,7 @@ void client_handler(int browserfd, char *cip, char *cport){
 	for (int k=0; k< ((n<10)?n:10) ;k++)
 		printf("0x%X, ",sr->id[k]);
 	printf("\n");
+
 
 	if(request[1] == 91){
 		write(browserfd, request, 8);
@@ -477,7 +475,7 @@ int main (int argc, char *argv[], char **envp){
 		else if(childpid == 0) //child
 		{
 			close(serverfd);
-			client_handler(newsockfd,cip,cport);
+			client_handler(newsockfd, cip, cport);
 			close(newsockfd);
 			printf("server: client %d exit\n", getpid());
 			return 0;

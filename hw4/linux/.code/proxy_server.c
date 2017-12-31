@@ -70,6 +70,18 @@ char port[5] = "7657";
 char buffer[BUFFER_SIZE];
 int n;
 int isTimeout = 0;
+void print_connect_info(int browserfd, char *cip, char *cport, sock4r *sr,int acc_rej){
+	printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
+	printf("client%d: <S_PORT> :=%s\n", browserfd, cport);
+	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
+	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
+	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
+	printf("client%d: <Reply>  :%s\n", browserfd, ((acc_rej == 90)? "ACCEPT" : "REJECT"));
+	// printf("client%d: <Content>:",browserfd);
+	// for (int k=0; k< ((n<10)?n:10) ;k++)
+	// 	printf("0x%X, ",sr->id[k]);
+	// printf("\n");
+}
 int readall(int fd, char *str, int maxlen){
 	int n, rc;
 	char c;
@@ -219,16 +231,17 @@ void client_handler(int browserfd, char *cip, char *cport){
 	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
 
 	//show message
-	printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
-	printf("client%d: <S_PORT> :=%s\n", browserfd, cport);
-	printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
-	printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
-	printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
-	printf("client%d: <Reply>  :%s\n", browserfd, ((request[1] == 90)? "ACCEPT" : "REJECT"));
-	printf("client%d: <Content>:",browserfd);
-	for (int k=0; k< ((n<10)?n:10) ;k++)
-		printf("0x%X, ",sr->id[k]);
-	printf("\n");
+	print_connect_info(browserfd, cip, cport, sr, request[1]);
+	// printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
+	// printf("client%d: <S_PORT> :=%s\n", browserfd, cport);
+	// printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
+	// printf("client%d: <D_PORT> :%u\n", browserfd, sr->port);
+	// printf("client%d: <Command>:%s\n", browserfd, ((sr->cd == 0x01)? "CONNECT" : "BIND"));
+	// printf("client%d: <Reply>  :%s\n", browserfd, ((request[1] == 90)? "ACCEPT" : "REJECT"));
+	// printf("client%d: <Content>:",browserfd);
+	// for (int k=0; k< ((n<10)?n:10) ;k++)
+	// 	printf("0x%X, ",sr->id[k]);
+	// printf("\n");
 
 
 	if(request[1] == 91){
@@ -285,8 +298,14 @@ void client_handler(int browserfd, char *cip, char *cport){
 
 			if(FD_ISSET(browserfd, &rfds))
 			{
+				print_connect_info(browserfd, cip, cport, sr, request[1]);
+
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(browserfd, buffer, BUFFER_SIZE - 1);
+				printf("client%d: <Content>:",browserfd);
+				for (int k=0; k< ((n<10)?n:10) ;k++)
+					printf("0x%X, ",buffer[k]);
+				printf("\n");
 				if(n <= 0)
 				{
 					printf("client%lu: browser over\n", pid);
@@ -301,6 +320,11 @@ void client_handler(int browserfd, char *cip, char *cport){
 			{
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(webfd, buffer, BUFFER_SIZE - 1);
+				print_connect_info(browserfd, cip, cport, sr, request[1]);
+				printf("client%d: <Content>:",browserfd);
+				for (int k=0; k< ((n<10)?n:10) ;k++)
+					printf("0x%X, ",buffer[k]);
+				printf("\n");
 				if(n <= 0)
 				{
 					printf("client%lu: web over\n", pid);
@@ -404,6 +428,11 @@ void client_handler(int browserfd, char *cip, char *cport){
 			{
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(browserfd, buffer, BUFFER_SIZE - 1);
+				// print_connect_info(browserfd, cip, cport, sr, request[1]);
+				// printf("client%d: <Content>:",browserfd);
+				// for (int k=0; k< ((n<10)?n:10) ;k++)
+				// 	printf("0x%X, ",buffer[k]);
+				// printf("\n");
 				if(n <= 0)
 				{
 					//printf("client%lu: browser over\n", pid);
@@ -421,6 +450,11 @@ void client_handler(int browserfd, char *cip, char *cport){
 			{
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(ftpfd, buffer, BUFFER_SIZE - 1);
+				// print_connect_info(browserfd, cip, cport, sr, request[1]);
+				// printf("client%d: <Content>:",browserfd);
+				// for (int k=0; k< ((n<10)?n:10) ;k++)
+				// 	printf("0x%X, ",buffer[k]);
+				// printf("\n");
 				if(n <= 0)
 				{
 					//printf("client%lu: ftp over\n", pid);
@@ -435,6 +469,8 @@ void client_handler(int browserfd, char *cip, char *cport){
 				}
 			}
 		}
+		FD_ZERO(&afds);
+		FD_ZERO(&rfds);
 		close(ftpfd);
 
 	}

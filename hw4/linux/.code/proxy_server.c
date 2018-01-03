@@ -196,6 +196,54 @@ int checkFirewall(sock4r *sr){
 	}
 	return (0);
 }
+int checkhostFirewall(char *cip, char *cport, unsigned char cd){
+	FILE *f = fopen("host.conf", "r");
+	char *mes = (char*)malloc(sizeof(char)*100);
+	char firewall[3][100];
+	char permitIP[4][4];
+	char *t = NULL;
+	int i = 0;
+	unsigned char ccip[4]={0,0,0,0};
+	unsigned int ccport=0;
+
+    t = strtok(cip,".");
+	while(t != NULL){
+		ccip[i++]=atoi(t);
+		printf("%c\n",ccip[i-1]);
+		t = strtok(NULL, ".");
+	}
+
+	while(fgets(mes, sizeof(char)*100, f) != NULL){
+		//	mes = permit c 140.113.*.*
+		*(mes+strlen(mes)-1) = 0; //remove '\n' at the end of line
+		if(*mes == '#') continue;
+
+		i = 0;
+		t = strtok(mes, " ");
+		while(t != NULL){
+			strcpy(firewall[i++], t);
+			t = strtok(NULL, " ");
+		}
+
+		i = 0;
+		t = strtok(firewall[2], ".");
+		while(t != NULL){
+			strcpy(permitIP[i++], t);
+			t = strtok(NULL, ".");
+		}
+
+		//check the firewall
+		if(strcmp(firewall[0],"permit") != 0) continue;
+		if(firewall[1][0] != ((cd == 0x01)?'c':'b') ) continue;
+		if(permitIP[0][0] != '*' && atoi(permitIP[0]) != ccip[0]) continue;
+		if(permitIP[1][0] != '*' && atoi(permitIP[1]) != ccip[1]) continue;
+		if(permitIP[2][0] != '*' && atoi(permitIP[2]) != ccip[2]) continue;
+		if(permitIP[3][0] != '*' && atoi(permitIP[3]) != ccip[3]) continue;
+
+		return (1);
+	}
+	return (0);
+}
 void client_handler(int browserfd, char *cip, char *cport){
 	alarm(TIME_OUT);
 
@@ -206,7 +254,7 @@ void client_handler(int browserfd, char *cip, char *cport){
 	unsigned char request[8];
 
 	n = read(browserfd, &request, 8);
-	printf("request:[%d %d %d %d %d %d %d %d]\n",request[0],request[1],request[2],request[3],request[4],request[5],request[6],request[7]);
+	//printf("request:[%d %d %d %d %d %d %d %d]\n",request[0],request[1],request[2],request[3],request[4],request[5],request[6],request[7]);
 	if (n != 8 || request[0] != 0x04 || (request[1] != 0x01 && request[1] != 0x02)) {
 		printf("client%lu: not socks4 request %d\n", pid, sr->vn);
 		return;
@@ -230,8 +278,20 @@ void client_handler(int browserfd, char *cip, char *cport){
 	request[0] = 0;
 	request[1] =(checkFirewall(sr) == 1) ? 90 : 91;
 
+	if(checkhostFirewall(cip, cport,sr->cd) == 0) {
+		//print_connect_info(browserfd, cip, cport, sr, request[1]);
+		printf("checkhostFirewall block\n");
+		close(browserfd);
+		//write(browserfd, request, 8);
+		return;
+	}
+	else {
+		printf("checkhostFirewall successful\n");
+	}
+
+
 	//show message
-	print_connect_info(browserfd, cip, cport, sr, request[1]);
+	//print_connect_info(browserfd, cip, cport, sr, request[1]);
 	// printf("client%d: <S_IP>   :=%s\n", browserfd, cip);
 	// printf("client%d: <S_PORT> :=%s\n", browserfd, cport);
 	// printf("client%d: <D_IP>   :%u.%u.%u.%u\n", browserfd, sr->ip[0], sr->ip[1], sr->ip[2], sr->ip[3]);
@@ -298,7 +358,7 @@ void client_handler(int browserfd, char *cip, char *cport){
 
 			if(FD_ISSET(browserfd, &rfds))
 			{
-				print_connect_info(browserfd, cip, cport, sr, request[1]);
+				//print_connect_info(browserfd, cip, cport, sr, request[1]);
 
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(browserfd, buffer, BUFFER_SIZE - 1);
@@ -320,7 +380,7 @@ void client_handler(int browserfd, char *cip, char *cport){
 			{
 				memset(buffer, 0, BUFFER_SIZE);
 				n = read(webfd, buffer, BUFFER_SIZE - 1);
-				print_connect_info(browserfd, cip, cport, sr, request[1]);
+				//print_connect_info(browserfd, cip, cport, sr, request[1]);
 				printf("client%d: <Content>:",browserfd);
 				for (int k=0; k< ((n<10)?n:10) ;k++)
 					printf("0x%X, ",buffer[k]);
